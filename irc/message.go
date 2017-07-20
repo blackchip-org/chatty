@@ -64,6 +64,17 @@ func (m Message) validate() error {
 }
 
 func (m Message) Encode() (string, error) {
+	return m.encode("")
+}
+
+func (m Message) EncodeWithNick(nick string) (string, error) {
+	if nick == "" {
+		nick = "*"
+	}
+	return m.encode(nick)
+}
+
+func (m Message) encode(nick string) (string, error) {
 	if err := m.validate(); err != nil {
 		return "", err
 	}
@@ -72,6 +83,9 @@ func (m Message) Encode() (string, error) {
 		fields = append(fields, ":"+m.Source)
 	}
 	fields = append(fields, m.Cmd)
+	if nick != "" && m.Cmd[0] >= '0' && m.Cmd[0] <= '9' {
+		fields = append(fields, nick)
+	}
 	if len(m.Args) > 0 {
 		fields = append(fields, m.Args.String())
 	}

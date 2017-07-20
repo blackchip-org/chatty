@@ -1,0 +1,6 @@
+- https://www.ietf.org/rfc/rfc1459.txt
+- http://www.mirc.com/rfc2813.html
+- https://superuser.com/questions/23180/whats-the-easiest-way-to-sniff-tcp-traffic-data-on-linux
+- https://www.alien.net.au/irc/irc2numerics.html
+- http://chi.cs.uchicago.edu/chirc/irc_examples.html
+- https://en.wikipedia.org/wiki/List_of_Internet_Relay_Chat_commands

@@ -28,8 +28,9 @@ func (s *Server) Run() error {
 	if s.Address == "" {
 		s.Address = defaultAddress
 	}
-	s.log = log.New(os.Stdout, s.Name, log.LstdFlags)
-	s.dlog = log.New(ioutil.Discard, s.Name, log.LstdFlags)
+	prefix := s.Name + " "
+	s.log = log.New(os.Stdout, prefix, log.LstdFlags)
+	s.dlog = log.New(ioutil.Discard, prefix, log.LstdFlags)
 	if s.Debug {
 		s.dlog.SetOutput(os.Stdout)
 	}
@@ -56,6 +57,7 @@ func (s *Server) Run() error {
 
 type handler struct {
 	server  *Server
+	client  Client
 	sendq   chan Message
 	w       *bufio.Writer
 	scanner *bufio.Scanner
@@ -127,7 +129,8 @@ func (h *handler) processSendQueue(ctx context.Context) {
 	for {
 		select {
 		case msg := <-h.sendq:
-			line, err := msg.Encode()
+			msg.Source = h.server.Name
+			line, err := msg.EncodeWithNick(h.client.Nick)
 			if err != nil {
 				h.log.Printf("error: cannot encode message: %v", err)
 				continue
