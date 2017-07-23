@@ -5,10 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
-	"os"
 )
 
 const defaultAddress = ":6667"
@@ -20,31 +18,22 @@ type Server struct {
 	Name    string
 	Address string
 	Debug   bool
-	log     *log.Logger
-	dlog    *log.Logger
 }
 
 func (s *Server) Run() error {
 	if s.Address == "" {
 		s.Address = defaultAddress
 	}
-	prefix := s.Name + " "
-	s.log = log.New(os.Stdout, prefix, log.LstdFlags)
-	s.dlog = log.New(ioutil.Discard, prefix, log.LstdFlags)
-	if s.Debug {
-		s.dlog.SetOutput(os.Stdout)
-	}
 
 	listener, err := net.Listen("tcp", s.Address)
 	if err != nil {
 		return fmt.Errorf("unable to start server: %v", err)
 	}
-	s.log.Printf("server started on %v", s.Address)
-	s.dlog.Printf("debug logging enabled")
+	log.Printf("server started on %v", s.Address)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			s.log.Printf("unable to accept -- %v", err)
+			log.Printf("unable to accept connection: %v", err)
 			continue
 		}
 		handler := newHandler(s, conn)
@@ -57,37 +46,29 @@ func (s *Server) Run() error {
 
 type handler struct {
 	server  *Server
-	client  Client
+	user    User
 	sendq   chan Message
 	w       *bufio.Writer
 	scanner *bufio.Scanner
-	log     *log.Logger
-	dlog    *log.Logger
 }
 
 func newHandler(server *Server, conn net.Conn) *handler {
-	prefix := fmt.Sprintf("%v ", conn.RemoteAddr())
 	h := &handler{
 		server:  server,
 		sendq:   make(chan Message, maxQueueLen),
 		w:       bufio.NewWriter(conn),
 		scanner: bufio.NewScanner(conn),
-		log:     log.New(os.Stdout, prefix, log.LstdFlags),
-		dlog:    log.New(ioutil.Discard, prefix, log.LstdFlags),
-	}
-	if server.Debug {
-		h.dlog.SetOutput(os.Stdout)
 	}
 	return h
 }
 
 func (h *handler) service() {
-	h.log.Println("connection established")
+	log.Printf("connection established")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
 		cancel()
-		h.log.Println("connection closed")
+		log.Println("connection closed")
 	}()
 
 	go func() {
@@ -97,17 +78,19 @@ func (h *handler) service() {
 
 	for h.scanner.Scan() {
 		line := h.scanner.Text()
-		h.dlog.Printf(" -> %v", line)
+		if h.server.Debug {
+			log.Printf(" -> %v", line)
+		}
 		m := DecodeMessage(line)
 		if err := h.command(m); err != nil {
 			if err != quit {
-				h.log.Printf("error: %v", err)
+				log.Printf("error: %v", err)
 			}
 			return
 		}
 	}
 	if err := h.scanner.Err(); err != nil {
-		h.log.Printf("error: %v", err)
+		log.Printf("error: %v", err)
 	}
 }
 
@@ -126,15 +109,17 @@ func (h *handler) processSendQueue(ctx context.Context) {
 		select {
 		case msg := <-h.sendq:
 			msg.Prefix = h.server.Name
-			msg.Target = h.client.Nick
+			msg.Target = h.user.Nick
 			line := msg.Encode()
-			h.dlog.Printf("<-  %v", line)
+			if h.server.Debug {
+				log.Printf("<-  %v", line)
+			}
 			if _, err := h.w.WriteString(line + "\n"); err != nil {
-				h.log.Printf("error: %v", err)
+				log.Printf("error: %v", err)
 				return
 			}
 			if err := h.w.Flush(); err != nil {
-				h.log.Printf("error: %v", err)
+				log.Printf("error: %v", err)
 				return
 			}
 		case <-ctx.Done():

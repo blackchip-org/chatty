@@ -2,6 +2,7 @@ package irc
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/blackchip-org/chatty/irc/icmd"
 )
@@ -15,11 +16,11 @@ func (h *handler) command(m Message) error {
 	case icmd.Ping:
 		return h.ping(m.Params)
 	case icmd.User:
-		return h.user(m.Params)
+		return h.user0(m.Params)
 	case icmd.Quit:
 		return quit
 	default:
-		h.log.Printf("unhandled message: %+v", m)
+		log.Printf("unhandled message: %+v", m)
 	}
 	return nil
 }
@@ -35,7 +36,7 @@ func (h *handler) cap(params []string) error {
 }
 
 func (h *handler) nick(params []string) error {
-	h.client.Nick = params[0]
+	h.user.Nick = params[0]
 	return h.checkHandshake()
 }
 
@@ -43,15 +44,15 @@ func (h *handler) ping(params []string) error {
 	return h.send("PONG", h.server.Name, params[0])
 }
 
-func (h *handler) user(params []string) error {
-	h.client.User = params[0]
+func (h *handler) user0(params []string) error {
+	h.user.Name = params[0]
 	return h.checkHandshake()
 }
 
 // ===============
 
 func (h *handler) checkHandshake() error {
-	if h.client.Nick != "" && h.client.User != "" {
+	if h.user.Nick != "" && h.user.Name != "" {
 		return h.welcome()
 	}
 	return nil
@@ -59,7 +60,7 @@ func (h *handler) checkHandshake() error {
 
 func (h *handler) welcome() error {
 	err := h.send(icmd.Welcome,
-		fmt.Sprintf("Welcome to the Internet Relay Chat Network %v", h.client.Nick))
+		fmt.Sprintf("Welcome to the Internet Relay Chat Network %v", h.user.Nick))
 	if err != nil {
 		return err
 	}
