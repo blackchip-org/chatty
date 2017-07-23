@@ -1,4 +1,4 @@
-package icmd
+package msg
 
 const (
 	Cap    = "CAP"

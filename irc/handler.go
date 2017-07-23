@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/blackchip-org/chatty/irc/icmd"
+	"github.com/blackchip-org/chatty/irc/msg"
 )
 
 type Handler interface {
@@ -26,15 +26,15 @@ type DefaultHandler struct {
 func (h *DefaultHandler) HandleCommand(cmd Command) bool {
 	handled := true
 	switch cmd.Name {
-	case icmd.Cap:
+	case msg.Cap:
 		h.cap(cmd.Params)
-	case icmd.Nick:
+	case msg.Nick:
 		h.nick(cmd.Params)
-	case icmd.Ping:
+	case msg.Ping:
 		h.ping(cmd.Params)
-	case icmd.User:
+	case msg.User:
 		h.user(cmd.Params)
-	case icmd.Quit:
+	case msg.Quit:
 		h.r.Quit()
 	default:
 		handled = false
@@ -45,9 +45,9 @@ func (h *DefaultHandler) HandleCommand(cmd Command) bool {
 
 func (h *DefaultHandler) cap(params []string) {
 	switch params[0] {
-	case icmd.CapReq:
+	case msg.CapReq:
 		h.r.Send("CAP", "*", "ACK", "multi-prefix")
-	case icmd.CapEnd:
+	case msg.CapEnd:
 		h.welcome()
 	}
 }
@@ -77,8 +77,8 @@ func (h *DefaultHandler) checkHandshake() error {
 }
 
 func (h *DefaultHandler) welcome() {
-	h.r.Send(icmd.Welcome, fmt.Sprintf("Welcome to the Internet Relay Chat Network %v", h.userNick)).
-		Send(icmd.YourHost, fmt.Sprintf("Your host is %v running version chatty-0", h.r.ServerName)).
-		Send(icmd.MotdStart, "Message of the day!").
-		Send(icmd.EndOfMotd)
+	h.r.Send(msg.Welcome, fmt.Sprintf("Welcome to the Internet Relay Chat Network %v", h.userNick)).
+		Send(msg.YourHost, fmt.Sprintf("Your host is %v running version chatty-0", h.r.ServerName)).
+		Send(msg.MotdStart, "Message of the day!").
+		Send(msg.EndOfMotd)
 }
