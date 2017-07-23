@@ -27,17 +27,21 @@ const maxQueueLen = 10
 var quit = errors.New("QUIT")
 
 type Server struct {
-	Name  string
-	Addr  string
-	Debug bool
+	Name           string
+	Addr           string
+	Debug          bool
+	NewHandlerFunc NewHandlerFunc
 }
 
-func (s *Server) Run() error {
+func (s *Server) ListenAndServe() error {
 	if s.Addr == "" {
 		s.Addr = Addr
 	}
 	if s.Name == "" {
 		s.Name = ServerName
+	}
+	if s.NewHandlerFunc == nil {
+		s.NewHandlerFunc = NewDefaultHandler
 	}
 
 	listener, err := net.Listen("tcp", s.Addr)
@@ -51,34 +55,23 @@ func (s *Server) Run() error {
 			log.Printf("unable to accept connection: %v", err)
 			continue
 		}
-		handler := newHandler(s, conn)
+		sconn := newServerConn(conn, s.Debug)
 		go func() {
 			defer conn.Close()
-			handler.service()
+			s.service(sconn)
 		}()
 	}
 }
 
-type handler struct {
-	server  *Server
-	user    User
-	sendq   chan Message
-	w       *bufio.Writer
-	scanner *bufio.Scanner
-}
-
-func newHandler(server *Server, conn net.Conn) *handler {
-	h := &handler{
-		server:  server,
-		sendq:   make(chan Message, maxQueueLen),
-		w:       bufio.NewWriter(conn),
-		scanner: bufio.NewScanner(conn),
-	}
-	return h
-}
-
-func (h *handler) service() {
+func (s *Server) service(conn *serverConn) {
 	log.Printf("connection established")
+
+	sendq := make(chan Message, maxQueueLen)
+	replySender := &ReplySender{
+		ServerName: s.Name,
+		sendq:      sendq,
+	}
+	handler := s.NewHandlerFunc(replySender)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
@@ -86,59 +79,108 @@ func (h *handler) service() {
 		log.Println("connection closed")
 	}()
 
+	// Process the send queue
 	go func() {
 		defer cancel()
-		h.processSendQueue(ctx)
+		for {
+			select {
+			case m := <-sendq:
+				err := conn.Write(m)
+				if err != nil {
+					log.Printf("error: %v", err)
+					return
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
 	}()
 
-	for h.scanner.Scan() {
-		line := h.scanner.Text()
-		if h.server.Debug {
-			log.Printf(" -> %v", line)
+	for {
+		m, err := conn.Read()
+		if err != nil {
+			log.Printf("error: %v", err)
+			return
 		}
-		m := DecodeMessage(line)
-		if err := h.command(m); err != nil {
+		handler.HandleCommand(Command{Name: m.Cmd, Params: m.Params})
+		err = replySender.err
+		if err != nil {
 			if err != quit {
 				log.Printf("error: %v", err)
 			}
 			return
 		}
 	}
-	if err := h.scanner.Err(); err != nil {
-		log.Printf("error: %v", err)
-	}
 }
 
-func (h *handler) send(cmd string, args ...string) error {
+type Command struct {
+	Name   string
+	Params []string
+}
+
+type ReplySender struct {
+	ServerName string
+	Target     string
+	err        error
+	sendq      chan Message
+}
+
+func (r *ReplySender) Send(cmd string, args ...string) *ReplySender {
+	if r.err != nil {
+		return r
+	}
 	m := NewMessage(cmd, args...)
+	m.Prefix = r.ServerName
+	m.Target = r.Target
 	select {
-	case h.sendq <- m:
-		return nil
+	case r.sendq <- m:
+		return r
 	default:
-		return errors.New("send queue full")
+		r.err = errors.New("send queue full")
 	}
+	return r
 }
 
-func (h *handler) processSendQueue(ctx context.Context) {
-	for {
-		select {
-		case msg := <-h.sendq:
-			msg.Prefix = h.server.Name
-			msg.Target = h.user.Nick
-			line := msg.Encode()
-			if h.server.Debug {
-				log.Printf("<-  %v", line)
-			}
-			if _, err := h.w.WriteString(line + "\n"); err != nil {
-				log.Printf("error: %v", err)
-				return
-			}
-			if err := h.w.Flush(); err != nil {
-				log.Printf("error: %v", err)
-				return
-			}
-		case <-ctx.Done():
-			return
-		}
+func (r *ReplySender) Quit() {
+	r.err = quit
+}
+
+type serverConn struct {
+	debug   bool
+	w       *bufio.Writer
+	scanner *bufio.Scanner
+}
+
+func newServerConn(conn net.Conn, debug bool) *serverConn {
+	s := &serverConn{
+		debug:   debug,
+		w:       bufio.NewWriter(conn),
+		scanner: bufio.NewScanner(conn),
 	}
+	return s
+}
+
+func (c *serverConn) Read() (Message, error) {
+	if ok := c.scanner.Scan(); !ok {
+		return Message{}, c.scanner.Err()
+	}
+	line := c.scanner.Text()
+	if c.debug {
+		log.Printf(" -> %v", line)
+	}
+	return DecodeMessage(line), nil
+}
+
+func (c *serverConn) Write(m Message) error {
+	line := m.Encode()
+	if c.debug {
+		log.Printf("<-  %v", line)
+	}
+	if _, err := c.w.WriteString(line + "\n"); err != nil {
+		return err
+	}
+	if err := c.w.Flush(); err != nil {
+		return err
+	}
+	return nil
 }

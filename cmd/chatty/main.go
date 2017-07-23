@@ -23,5 +23,5 @@ func main() {
 		Debug: debug,
 		Name:  name,
 	}
-	s.Run()
+	s.ListenAndServe()
 }
