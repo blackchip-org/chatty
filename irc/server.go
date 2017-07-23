@@ -8,6 +8,9 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
+
+	"github.com/blackchip-org/chatty/irc/msg"
 )
 
 var (
@@ -22,6 +25,10 @@ func init() {
 	}
 }
 
+type Source interface {
+	Prefix() string
+}
+
 const maxQueueLen = 10
 
 var quit = errors.New("QUIT")
@@ -31,6 +38,10 @@ type Server struct {
 	Addr           string
 	Debug          bool
 	NewHandlerFunc NewHandlerFunc
+
+	mutex    sync.RWMutex
+	channels map[string]*Channel
+	nicks    map[string]*User
 }
 
 func (s *Server) ListenAndServe() error {
@@ -43,6 +54,7 @@ func (s *Server) ListenAndServe() error {
 	if s.NewHandlerFunc == nil {
 		s.NewHandlerFunc = NewDefaultHandler
 	}
+	s.channels = make(map[string]*Channel)
 
 	listener, err := net.Listen("tcp", s.Addr)
 	if err != nil {
@@ -55,23 +67,27 @@ func (s *Server) ListenAndServe() error {
 			log.Printf("unable to accept connection: %v", err)
 			continue
 		}
-		sconn := newServerConn(conn, s.Debug)
 		go func() {
 			defer conn.Close()
-			s.service(sconn)
+			s.service(conn, s.Debug)
 		}()
 	}
 }
 
-func (s *Server) service(conn *serverConn) {
+func (s *Server) Prefix() string {
+	return s.Name
+}
+
+func (s *Server) service(conn net.Conn, debug bool) {
 	log.Printf("connection established")
 
 	sendq := make(chan Message, maxQueueLen)
-	replySender := &ReplySender{
+	user := &User{
 		ServerName: s.Name,
+		Host:       conn.RemoteAddr().String(),
 		sendq:      sendq,
 	}
-	handler := s.NewHandlerFunc(replySender)
+	handler := s.NewHandlerFunc(s, user)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
@@ -79,108 +95,79 @@ func (s *Server) service(conn *serverConn) {
 		log.Println("connection closed")
 	}()
 
-	// Process the send queue
 	go func() {
 		defer cancel()
-		for {
-			select {
-			case m := <-sendq:
-				err := conn.Write(m)
-				if err != nil {
-					log.Printf("error: %v", err)
-					return
-				}
-			case <-ctx.Done():
-				return
-			}
+		if err := writer(ctx, conn, user, sendq, debug); err != nil {
+			log.Printf("error: %v", err)
 		}
 	}()
+	if err := reader(ctx, conn, user, handler, debug); err != nil {
+		log.Printf("error: %v", err)
+	}
+}
 
+func reader(ctx context.Context, conn net.Conn, source Source, handler Handler, debug bool) error {
+	scanner := bufio.NewScanner(conn)
 	for {
-		m, err := conn.Read()
-		if err != nil {
-			log.Printf("error: %v", err)
-			return
+		if ok := scanner.Scan(); !ok {
+			return scanner.Err()
 		}
-		handler.HandleCommand(Command{Name: m.Cmd, Params: m.Params})
-		err = replySender.err
-		if err != nil {
-			if err != quit {
-				log.Printf("error: %v", err)
+		line := scanner.Text()
+		if debug {
+			log.Printf(" -> [%v] %v", source.Prefix(), line)
+		}
+		m := DecodeMessage(line)
+		if _, err := handler.Handle(Command{Name: m.Cmd, Params: m.Params}); err != nil {
+			if err == quit {
+				return nil
 			}
-			return
+			log.Printf("error: %v", err)
+			return err
 		}
 	}
 }
 
-type Command struct {
-	Name   string
-	Params []string
+func writer(ctx context.Context, conn net.Conn, source Source, sendq <-chan Message, debug bool) error {
+	w := bufio.NewWriter(conn)
+	for {
+		select {
+		case m := <-sendq:
+			line := m.Encode()
+			if debug {
+				log.Printf("<-  [%v] %v", source.Prefix(), line)
+			}
+			if _, err := w.WriteString(line + "\n"); err != nil {
+				return err
+			}
+			if err := w.Flush(); err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }
 
-type ReplySender struct {
-	ServerName string
-	Target     string
-	err        error
-	sendq      chan Message
+func (s *Server) JoinChannel(u *User, name string) (*Channel, *Error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	ch, exists := s.channels[name]
+	if !exists {
+		ch = NewChannel(name)
+		s.channels[name] = ch
+	}
+	ch.Join(u)
+	return ch, nil
 }
 
-func (r *ReplySender) Send(cmd string, args ...string) *ReplySender {
-	if r.err != nil {
-		return r
+func (s *Server) Nick(u *User, nick string) *Error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if _, exists := s.nicks[nick]; exists {
+		return NewError(msg.ErrNickNameInUse, nick)
 	}
-	m := NewMessage(cmd, args...)
-	m.Prefix = r.ServerName
-	m.Target = r.Target
-	select {
-	case r.sendq <- m:
-		return r
-	default:
-		r.err = errors.New("send queue full")
-	}
-	return r
-}
-
-func (r *ReplySender) Quit() {
-	r.err = quit
-}
-
-type serverConn struct {
-	debug   bool
-	w       *bufio.Writer
-	scanner *bufio.Scanner
-}
-
-func newServerConn(conn net.Conn, debug bool) *serverConn {
-	s := &serverConn{
-		debug:   debug,
-		w:       bufio.NewWriter(conn),
-		scanner: bufio.NewScanner(conn),
-	}
-	return s
-}
-
-func (c *serverConn) Read() (Message, error) {
-	if ok := c.scanner.Scan(); !ok {
-		return Message{}, c.scanner.Err()
-	}
-	line := c.scanner.Text()
-	if c.debug {
-		log.Printf(" -> %v", line)
-	}
-	return DecodeMessage(line), nil
-}
-
-func (c *serverConn) Write(m Message) error {
-	line := m.Encode()
-	if c.debug {
-		log.Printf("<-  %v", line)
-	}
-	if _, err := c.w.WriteString(line + "\n"); err != nil {
-		return err
-	}
-	if err := c.w.Flush(); err != nil {
-		return err
-	}
+	delete(s.nicks, u.Nick)
+	s.nicks[nick] = u
+	u.Nick = nick
 	return nil
 }
