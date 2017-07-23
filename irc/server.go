@@ -7,29 +7,44 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 )
 
-const defaultAddress = ":6667"
+var (
+	Addr       = ":6667"
+	ServerName = "localhost"
+)
+
+func init() {
+	name, err := os.Hostname()
+	if err == nil {
+		ServerName = name
+	}
+}
+
 const maxQueueLen = 10
 
 var quit = errors.New("QUIT")
 
 type Server struct {
-	Name    string
-	Address string
-	Debug   bool
+	Name  string
+	Addr  string
+	Debug bool
 }
 
 func (s *Server) Run() error {
-	if s.Address == "" {
-		s.Address = defaultAddress
+	if s.Addr == "" {
+		s.Addr = Addr
+	}
+	if s.Name == "" {
+		s.Name = ServerName
 	}
 
-	listener, err := net.Listen("tcp", s.Address)
+	listener, err := net.Listen("tcp", s.Addr)
 	if err != nil {
 		return fmt.Errorf("unable to start server: %v", err)
 	}
-	log.Printf("server started on %v", s.Address)
+	log.Printf("server started on %v", s.Addr)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
