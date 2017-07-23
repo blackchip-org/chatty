@@ -9,13 +9,13 @@ import (
 func (h *handler) command(m Message) error {
 	switch m.Cmd {
 	case icmd.Cap:
-		return h.cap(m.Args)
+		return h.cap(m.Params)
 	case icmd.Nick:
-		return h.nick(m.Args)
+		return h.nick(m.Params)
 	case icmd.Ping:
-		return h.ping(m.Args)
+		return h.ping(m.Params)
 	case icmd.User:
-		return h.user(m.Args)
+		return h.user(m.Params)
 	case icmd.Quit:
 		return quit
 	default:
@@ -24,8 +24,8 @@ func (h *handler) command(m Message) error {
 	return nil
 }
 
-func (h *handler) cap(args Args) error {
-	switch args[0] {
+func (h *handler) cap(params []string) error {
+	switch params[0] {
 	case icmd.CapReq:
 		return h.send("CAP", "*", "ACK", "multi-prefix")
 	case icmd.CapEnd:
@@ -34,17 +34,17 @@ func (h *handler) cap(args Args) error {
 	return nil
 }
 
-func (h *handler) nick(args Args) error {
-	h.client.Nick = args[0]
+func (h *handler) nick(params []string) error {
+	h.client.Nick = params[0]
 	return h.checkHandshake()
 }
 
-func (h *handler) ping(args Args) error {
-	return h.send("PONG", h.server.Name, args[0])
+func (h *handler) ping(params []string) error {
+	return h.send("PONG", h.server.Name, params[0])
 }
 
-func (h *handler) user(args Args) error {
-	h.client.User = args.String()
+func (h *handler) user(params []string) error {
+	h.client.User = params[0]
 	return h.checkHandshake()
 }
 

@@ -98,11 +98,7 @@ func (h *handler) service() {
 	for h.scanner.Scan() {
 		line := h.scanner.Text()
 		h.dlog.Printf(" -> %v", line)
-		m, err := DecodeMessage(line)
-		if err != nil {
-			h.log.Printf("error: %v", err)
-			return
-		}
+		m := DecodeMessage(line)
 		if err := h.command(m); err != nil {
 			if err != quit {
 				h.log.Printf("error: %v", err)
@@ -116,7 +112,7 @@ func (h *handler) service() {
 }
 
 func (h *handler) send(cmd string, args ...string) error {
-	m := Message{Cmd: cmd, Args: args}
+	m := NewMessage(cmd, args...)
 	select {
 	case h.sendq <- m:
 		return nil
@@ -129,12 +125,9 @@ func (h *handler) processSendQueue(ctx context.Context) {
 	for {
 		select {
 		case msg := <-h.sendq:
-			msg.Source = h.server.Name
-			line, err := msg.EncodeWithNick(h.client.Nick)
-			if err != nil {
-				h.log.Printf("error: cannot encode message: %v", err)
-				continue
-			}
+			msg.Prefix = h.server.Name
+			msg.Target = h.client.Nick
+			line := msg.Encode()
 			h.dlog.Printf("<-  %v", line)
 			if _, err := h.w.WriteString(line + "\n"); err != nil {
 				h.log.Printf("error: %v", err)

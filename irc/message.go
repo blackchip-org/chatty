@@ -1,110 +1,70 @@
 package irc
 
 import (
-	"errors"
 	"strings"
 )
 
-var (
-	ErrInvalidMessage = errors.New("invalid message")
-)
-
-type Args []string
-
 type Message struct {
-	Source string
+	Prefix string
 	Cmd    string
-	Args   Args
+	Target string
+	Params []string
 }
 
-func NewMessage(cmd string, args ...string) Message {
-	return Message{Cmd: cmd, Args: args}
+func NewMessage(cmd string, params ...string) Message {
+	return Message{Cmd: cmd, Params: params}
 }
 
-func DecodeMessage(line string) (Message, error) {
+func DecodeMessage(line string) Message {
 	m := Message{}
-	m.Args = make([]string, 0)
+	m.Params = make([]string, 0)
 	fields := strings.Split(line, " ")
 	if strings.HasPrefix(fields[0], ":") {
-		m.Source = fields[0][1:]
+		m.Prefix = fields[0][1:]
 		fields = fields[1:]
 	}
 	if len(fields) == 0 {
-		return m, errors.New("no command")
+		m.Cmd = "*"
+	} else {
+		m.Cmd = fields[0]
+		fields = fields[1:]
 	}
-	m.Cmd = fields[0]
-	fields = fields[1:]
 	for len(fields) > 0 {
 		if strings.HasPrefix(fields[0], ":") {
 			arg := strings.Join(fields, " ")
 			arg = arg[1:] // Remove colon
-			m.Args = append(m.Args, arg)
+			m.Params = append(m.Params, arg)
 			fields = []string{}
 		} else {
-			m.Args = append(m.Args, fields[0])
+			m.Params = append(m.Params, fields[0])
 			fields = fields[1:]
 		}
 	}
-	return m, nil
+	return m
 }
 
-func (m Message) validate() error {
-	if m.Cmd == "" {
-		return ErrInvalidMessage
-	}
-	// Only the last argument is allowed to have spaces
-	if len(m.Args) > 0 {
-		for _, arg := range m.Args[:len(m.Args)-1] {
-			if strings.Contains(arg, " ") {
-				return ErrInvalidMessage
-			}
-		}
-	}
-	return nil
-}
-
-func (m Message) Encode() (string, error) {
-	return m.encode("")
-}
-
-func (m Message) EncodeWithNick(nick string) (string, error) {
-	if nick == "" {
-		nick = "*"
-	}
-	return m.encode(nick)
-}
-
-func (m Message) encode(nick string) (string, error) {
-	if err := m.validate(); err != nil {
-		return "", err
-	}
+func (m Message) Encode() string {
 	fields := make([]string, 0)
-	if m.Source != "" {
-		fields = append(fields, ":"+m.Source)
+	if m.Prefix != "" {
+		fields = append(fields, ":"+m.Prefix)
 	}
-	fields = append(fields, m.Cmd)
-	if nick != "" && m.Cmd[0] >= '0' && m.Cmd[0] <= '9' {
-		fields = append(fields, nick)
+	cmd := m.Cmd
+	if cmd == "" {
+		cmd = "*"
 	}
-	if len(m.Args) > 0 {
-		fields = append(fields, m.Args.String())
+	fields = append(fields, cmd)
+	if m.Target != "" && m.Cmd[0] >= '0' && m.Cmd[0] <= '9' {
+		fields = append(fields, m.Target)
 	}
-	return strings.Join(fields, " "), nil
+	for i, param := range m.Params {
+		if i == len(m.Params)-1 && strings.Contains(param, " ") {
+			param = ":" + param
+		}
+		fields = append(fields, param)
+	}
+	return strings.Join(fields, " ")
 }
 
-func (a Args) String() string {
-	n := len(a)
-	if n == 0 {
-		return ""
-	}
-	last := n - 1
-	parts := make([]string, 0)
-	for i, arg := range a {
-		if i == last && strings.Contains(arg, " ") {
-			parts = append(parts, ":"+arg)
-		} else {
-			parts = append(parts, arg)
-		}
-	}
-	return strings.Join(parts, " ")
+func (m Message) String() string {
+	return m.Encode()
 }
