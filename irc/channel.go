@@ -2,8 +2,6 @@ package irc
 
 import (
 	"sync"
-
-	"github.com/blackchip-org/chatty/irc/msg"
 )
 
 type Channel struct {
@@ -28,10 +26,10 @@ func (c *Channel) Join(u *User) {
 	c.Members[u.Nick] = u
 	names := make([]string, 0, len(c.Members))
 	for _, member := range c.Members {
-		member.Relay(u, msg.Join, c.Name)
+		member.Relay(u, JoinCmd, c.Name)
 		names = append(names, member.Nick)
 	}
-	u.Reply(msg.Topic, c.Topic)
-	u.Reply(msg.NameReply, names...)
-	u.Reply(msg.EndOfNames)
+	u.Reply(RplTopic, c.Topic)
+	u.Reply(RplNameReply, names...)
+	u.Reply(RplEndOfNames)
 }

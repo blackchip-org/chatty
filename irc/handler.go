@@ -3,8 +3,6 @@ package irc
 import (
 	"fmt"
 	"log"
-
-	"github.com/blackchip-org/chatty/irc/msg"
 )
 
 type Handler interface {
@@ -25,19 +23,19 @@ type DefaultHandler struct {
 func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 	handled := true
 	switch cmd.Name {
-	case msg.Cap:
+	case CapCmd:
 		h.cap(cmd.Params)
-	case msg.Join:
+	case JoinCmd:
 		h.join(cmd.Params)
-	case msg.Nick:
+	case NickCmd:
 		h.nick(cmd.Params)
-	case msg.Pass:
+	case PassCmd:
 		// ignore
-	case msg.Ping:
+	case PingCmd:
 		h.ping(cmd.Params)
-	case msg.User:
+	case UserCmd:
 		h.user(cmd.Params)
-	case msg.Quit:
+	case QuitCmd:
 		h.u.Quit()
 	default:
 		handled = false
@@ -48,9 +46,9 @@ func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 
 func (h *DefaultHandler) cap(params []string) {
 	switch params[0] {
-	case msg.CapReq:
+	case CapReqCmd:
 		h.u.Reply("CAP", "*", "ACK", "multi-prefix")
-	case msg.CapEnd:
+	case CapEndCmd:
 		h.welcome()
 	}
 }
@@ -63,7 +61,7 @@ func (h *DefaultHandler) join(params []string) {
 
 func (h *DefaultHandler) nick(params []string) {
 	if len(params) != 1 {
-		h.u.SendError(NewError(msg.ErrNoNickNameGiven))
+		h.u.SendError(NewError(ErrNoNickNameGiven))
 		return
 	}
 	h.u.Nick = params[0]
@@ -71,7 +69,7 @@ func (h *DefaultHandler) nick(params []string) {
 }
 
 func (h *DefaultHandler) ping(params []string) {
-	h.u.Send("PONG", params[0])
+	h.u.Send(PongCmd, params[0])
 }
 
 func (h *DefaultHandler) user(params []string) {
@@ -90,8 +88,8 @@ func (h *DefaultHandler) checkHandshake() error {
 }
 
 func (h *DefaultHandler) welcome() {
-	h.u.Reply(msg.Welcome, fmt.Sprintf("Welcome to the Internet Relay Chat Network %v", h.u.Nick)).
-		Reply(msg.YourHost, fmt.Sprintf("Your host is %v running version chatty-0", h.s.Name)).
-		Reply(msg.MotdStart, "Message of the day!").
-		Reply(msg.EndOfMotd)
+	h.u.Reply(RplWelcome, fmt.Sprintf("Welcome to the Internet Relay Chat Network %v", h.u.Nick)).
+		Reply(RplYourHost, fmt.Sprintf("Your host is %v running version chatty-0", h.s.Name)).
+		Reply(RplMotdStart, "Message of the day!").
+		Reply(RplEndOfMotd)
 }

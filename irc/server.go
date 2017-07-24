@@ -9,8 +9,6 @@ import (
 	"net"
 	"os"
 	"sync"
-
-	"github.com/blackchip-org/chatty/irc/msg"
 )
 
 var (
@@ -164,7 +162,7 @@ func (s *Server) Nick(u *User, nick string) *Error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	if _, exists := s.nicks[nick]; exists {
-		return NewError(msg.ErrNickNameInUse, nick)
+		return NewError(ErrNickNameInUse, nick)
 	}
 	delete(s.nicks, u.Nick)
 	s.nicks[nick] = u

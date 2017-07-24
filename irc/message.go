@@ -2,8 +2,6 @@ package irc
 
 import (
 	"strings"
-
-	"github.com/blackchip-org/chatty/irc/msg"
 )
 
 type Message struct {
@@ -86,7 +84,7 @@ func (e Error) Error() string {
 }
 
 func NewError(numeric string, params ...string) *Error {
-	if text, ok := msg.ErrorText[numeric]; ok {
+	if text, ok := ErrorText[numeric]; ok {
 		params = append(params, text)
 	}
 	return &Error{Numeric: numeric, Params: params}
