@@ -40,6 +40,8 @@ type Server struct {
 	mutex    sync.RWMutex
 	channels map[string]*Channel
 	nicks    map[string]*User
+	quit     chan bool
+	quitting bool
 }
 
 func (s *Server) ListenAndServe() error {
@@ -52,18 +54,31 @@ func (s *Server) ListenAndServe() error {
 	if s.NewHandlerFunc == nil {
 		s.NewHandlerFunc = NewDefaultHandler
 	}
+	s.quit = make(chan bool)
 	s.channels = make(map[string]*Channel)
+	s.nicks = make(map[string]*User)
 
 	listener, err := net.Listen("tcp", s.Addr)
 	if err != nil {
 		return fmt.Errorf("unable to start server: %v", err)
 	}
 	log.Printf("server started on %v", s.Addr)
+
+	go func() {
+		<-s.quit
+		s.quitting = true
+		log.Printf("server shutting down")
+		listener.Close()
+		s.quit <- true
+	}()
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Printf("unable to accept connection: %v", err)
-			continue
+			if s.quitting {
+				return nil
+			}
+			return err
 		}
 		go func() {
 			defer conn.Close()
@@ -74,6 +89,11 @@ func (s *Server) ListenAndServe() error {
 
 func (s *Server) Prefix() string {
 	return s.Name
+}
+
+func (s *Server) Quit() {
+	s.quit <- true
+	<-s.quit
 }
 
 func (s *Server) service(conn net.Conn, debug bool) {
@@ -146,6 +166,7 @@ func writer(ctx context.Context, conn net.Conn, source Source, sendq <-chan Mess
 	}
 }
 
+/*
 func (s *Server) JoinChannel(u *User, name string) (*Channel, *Error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -157,6 +178,7 @@ func (s *Server) JoinChannel(u *User, name string) (*Channel, *Error) {
 	ch.Join(u)
 	return ch, nil
 }
+*/
 
 func (s *Server) Nick(u *User, nick string) *Error {
 	s.mutex.Lock()

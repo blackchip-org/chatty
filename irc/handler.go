@@ -12,7 +12,10 @@ type Handler interface {
 type NewHandlerFunc func(*Server, *User) Handler
 
 func NewDefaultHandler(s *Server, u *User) Handler {
-	return &DefaultHandler{s: s, u: u}
+	return &DefaultHandler{
+		s: s,
+		u: u,
+	}
 }
 
 type DefaultHandler struct {
@@ -54,9 +57,11 @@ func (h *DefaultHandler) cap(params []string) {
 }
 
 func (h *DefaultHandler) join(params []string) {
-	if _, err := h.s.JoinChannel(h.u, params[0]); err != nil {
-		h.u.SendError(err)
-	}
+	/*
+		if _, err := h.s.JoinChannel(h.u, params[0]); err != nil {
+			h.u.SendError(err)
+		}
+	*/
 }
 
 func (h *DefaultHandler) nick(params []string) {
@@ -64,7 +69,11 @@ func (h *DefaultHandler) nick(params []string) {
 		h.u.SendError(NewError(ErrNoNickNameGiven))
 		return
 	}
-	h.u.Nick = params[0]
+	nick := params[0]
+	if err := h.s.Nick(h.u, nick); err != nil {
+		h.u.SendError(err)
+		return
+	}
 	h.checkHandshake()
 }
 
