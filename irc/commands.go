@@ -27,6 +27,7 @@ const (
 )
 
 const (
+	ErrNeedMoreParams  = "461"
 	ErrNickNameInUse   = "433"
 	ErrNoNickNameGiven = "431"
 )

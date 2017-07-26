@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -144,6 +145,17 @@ func (c *TestClient) Recv() string {
 			}
 			time.Sleep(100 * time.Millisecond)
 		}
+	}
+}
+
+func (c *TestClient) Drain() string {
+	lines := make([]string, 0)
+	for {
+		line := c.Recv()
+		if line == "" {
+			return strings.Join(lines, "\n")
+		}
+		lines = append(lines, line)
 	}
 }
 

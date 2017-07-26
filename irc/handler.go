@@ -57,11 +57,13 @@ func (h *DefaultHandler) cap(params []string) {
 }
 
 func (h *DefaultHandler) join(params []string) {
-	/*
-		if _, err := h.s.JoinChannel(h.u, params[0]); err != nil {
-			h.u.SendError(err)
-		}
-	*/
+	if len(params) == 0 {
+		h.u.SendError(NewError(ErrNeedMoreParams))
+	}
+	channel := params[0]
+	if _, err := h.s.Join(h.u, channel); err != nil {
+		h.u.SendError(err)
+	}
 }
 
 func (h *DefaultHandler) nick(params []string) {

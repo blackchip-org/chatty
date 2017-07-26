@@ -159,17 +159,3 @@ func writer(ctx context.Context, conn net.Conn, source Source, sendq <-chan Mess
 		}
 	}
 }
-
-/*
-func (s *Server) JoinChannel(u *User, name string) (*Channel, *Error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	ch, exists := s.channels[name]
-	if !exists {
-		ch = NewChannel(name)
-		s.channels[name] = ch
-	}
-	ch.Join(u)
-	return ch, nil
-}
-*/

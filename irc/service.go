@@ -32,3 +32,15 @@ func (s *Service) Nick(u *User, nick string) *Error {
 	u.Nick = nick
 	return nil
 }
+
+func (s *Service) Join(u *User, name string) (*Channel, *Error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	ch, exists := s.channels[name]
+	if !exists {
+		ch = NewChannel(name)
+		s.channels[name] = ch
+	}
+	ch.Join(u)
+	return ch, nil
+}
