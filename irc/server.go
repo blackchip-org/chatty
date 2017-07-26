@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"sync"
 )
 
 var (
@@ -37,9 +36,7 @@ type Server struct {
 	Debug          bool
 	NewHandlerFunc NewHandlerFunc
 
-	mutex    sync.RWMutex
-	channels map[string]*Channel
-	nicks    map[string]*User
+	service  *Service
 	quit     chan bool
 	quitting bool
 }
@@ -54,9 +51,8 @@ func (s *Server) ListenAndServe() error {
 	if s.NewHandlerFunc == nil {
 		s.NewHandlerFunc = NewDefaultHandler
 	}
+	s.service = newService()
 	s.quit = make(chan bool)
-	s.channels = make(map[string]*Channel)
-	s.nicks = make(map[string]*User)
 
 	listener, err := net.Listen("tcp", s.Addr)
 	if err != nil {
@@ -81,7 +77,7 @@ func (s *Server) ListenAndServe() error {
 		}
 		go func() {
 			defer conn.Close()
-			s.service(conn, s.Debug)
+			s.handle(conn, s.Debug)
 		}()
 	}
 }
@@ -94,7 +90,7 @@ func (s *Server) Quit() {
 	s.quit <- true
 }
 
-func (s *Server) service(conn net.Conn, debug bool) {
+func (s *Server) handle(conn net.Conn, debug bool) {
 	log.Printf("connection established")
 
 	sendq := make(chan Message, maxQueueLen)
@@ -103,7 +99,7 @@ func (s *Server) service(conn net.Conn, debug bool) {
 		Host:       conn.RemoteAddr().String(),
 		sendq:      sendq,
 	}
-	handler := s.NewHandlerFunc(s, user)
+	handler := s.NewHandlerFunc(s.service, user)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
@@ -177,15 +173,3 @@ func (s *Server) JoinChannel(u *User, name string) (*Channel, *Error) {
 	return ch, nil
 }
 */
-
-func (s *Server) Nick(u *User, nick string) *Error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	if _, exists := s.nicks[nick]; exists {
-		return NewError(ErrNickNameInUse, nick)
-	}
-	delete(s.nicks, u.Nick)
-	s.nicks[nick] = u
-	u.Nick = nick
-	return nil
-}

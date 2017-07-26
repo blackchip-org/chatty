@@ -9,9 +9,9 @@ type Handler interface {
 	Handle(Command) (bool, error)
 }
 
-type NewHandlerFunc func(*Server, *User) Handler
+type NewHandlerFunc func(*Service, *User) Handler
 
-func NewDefaultHandler(s *Server, u *User) Handler {
+func NewDefaultHandler(s *Service, u *User) Handler {
 	return &DefaultHandler{
 		s: s,
 		u: u,
@@ -19,7 +19,7 @@ func NewDefaultHandler(s *Server, u *User) Handler {
 }
 
 type DefaultHandler struct {
-	s *Server
+	s *Service
 	u *User
 }
 
@@ -98,7 +98,7 @@ func (h *DefaultHandler) checkHandshake() error {
 
 func (h *DefaultHandler) welcome() {
 	h.u.Reply(RplWelcome, fmt.Sprintf("Welcome to the Internet Relay Chat Network %v", h.u.Nick)).
-		Reply(RplYourHost, fmt.Sprintf("Your host is %v running version chatty-0", h.s.Name)).
+		Reply(RplYourHost, fmt.Sprintf("Your host is %v running version chatty-0", h.s.Prefix())).
 		Reply(RplMotdStart, "Message of the day!").
 		Reply(RplEndOfMotd)
 }
