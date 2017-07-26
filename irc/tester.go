@@ -5,8 +5,11 @@ import (
 	"errors"
 	"log"
 	"net"
+	"strconv"
 	"time"
 )
+
+var nextPort = 6667
 
 type TestServer struct {
 	server  *Server
@@ -22,10 +25,16 @@ type TestClient struct {
 }
 
 func NewTestServer() (*TestServer, *TestClient) {
+	addr := ":" + strconv.Itoa(nextPort)
+	nextPort++
+	if nextPort > 6668 {
+		nextPort = 6667
+	}
 	ts := &TestServer{
 		server: &Server{
 			Name:  "example.com",
 			Debug: true,
+			Addr:  addr,
 		},
 		clients: make([]*TestClient, 0),
 	}
@@ -40,6 +49,8 @@ func NewTestServer() (*TestServer, *TestClient) {
 				}
 				retries++
 				time.Sleep(100 * time.Millisecond)
+			} else {
+				return
 			}
 		}
 	}()
@@ -56,7 +67,7 @@ func (s *TestServer) NewClient() *TestClient {
 		tc.err = s.err
 		return tc
 	}
-	err := tc.connect()
+	err := tc.connect(s.server.Addr)
 	if err != nil {
 		tc.err = err
 		return tc
@@ -78,10 +89,10 @@ func (s *TestServer) Quit() {
 	s.server.Quit()
 }
 
-func (c *TestClient) connect() error {
+func (c *TestClient) connect(addr string) error {
 	retries := 0
 	for {
-		conn, err := net.Dial("tcp", Addr)
+		conn, err := net.Dial("tcp", addr)
 		if err != nil {
 			if retries >= 10 {
 				return err
@@ -111,6 +122,11 @@ func (c *TestClient) Send(line string) {
 	}
 }
 
+func (c *TestClient) SendMessage(cmd string, params ...string) {
+	m := NewMessage(cmd, params...)
+	c.Send(m.Encode())
+}
+
 func (c *TestClient) Recv() string {
 	if c.err != nil {
 		return ""
@@ -131,6 +147,11 @@ func (c *TestClient) Recv() string {
 	}
 }
 
+func (c *TestClient) RecvMessage() Message {
+	line := c.Recv()
+	return DecodeMessage(line)
+}
+
 func (c *TestClient) reader() error {
 	scanner := bufio.NewScanner(c.conn)
 	for {
@@ -140,4 +161,26 @@ func (c *TestClient) reader() error {
 		line := scanner.Text()
 		c.recvq <- line
 	}
+}
+
+func (c *TestClient) WaitFor(reply string) Message {
+	for {
+		m := c.RecvMessage()
+		if c.err != nil {
+			return Message{}
+		}
+		if m.Cmd == reply {
+			return m
+		}
+	}
+}
+
+func (c *TestClient) Login(nick string, user string) {
+	c.Send("NICK " + nick)
+	c.Send("USER " + user)
+	c.WaitFor(RplEndOfMotd)
+}
+
+func (c *TestClient) LoginDefault() {
+	c.Login("bob", "bob 0 * :Bob Mackenzie")
 }

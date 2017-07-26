@@ -1,4 +1,4 @@
-package irc
+package fntest
 
 import (
 	"testing"

@@ -69,7 +69,6 @@ func (s *Server) ListenAndServe() error {
 		s.quitting = true
 		log.Printf("server shutting down")
 		listener.Close()
-		s.quit <- true
 	}()
 
 	for {
@@ -93,7 +92,6 @@ func (s *Server) Prefix() string {
 
 func (s *Server) Quit() {
 	s.quit <- true
-	<-s.quit
 }
 
 func (s *Server) service(conn net.Conn, debug bool) {

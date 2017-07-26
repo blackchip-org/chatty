@@ -78,7 +78,7 @@ func (h *DefaultHandler) nick(params []string) {
 }
 
 func (h *DefaultHandler) ping(params []string) {
-	h.u.Send(PongCmd, params[0])
+	h.u.Send(PongCmd, params...)
 }
 
 func (h *DefaultHandler) user(params []string) {
