@@ -28,3 +28,16 @@ func TestJoinChannel(t *testing.T) {
 		t.Fatalf("\n expected: %v \n got: %v", expected, got)
 	}
 }
+
+func TestJoinNoChannel(t *testing.T) {
+	s, c := irc.NewTestServer()
+	defer s.Quit()
+
+	c.LoginDefault()
+	c.Send("JOIN")
+	got := c.Recv()
+	expected := ":example.com 461 JOIN :Not enough parameters"
+	if expected != got {
+		t.Fatalf("\n expected: %v \n got: %v", expected, got)
+	}
+}

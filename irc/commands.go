@@ -33,6 +33,7 @@ const (
 )
 
 var ErrorText = map[string]string{
+	ErrNeedMoreParams:  "Not enough parameters",
 	ErrNickNameInUse:   "Nickname is already in use",
 	ErrNoNickNameGiven: "No nickname given",
 }

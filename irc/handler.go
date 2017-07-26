@@ -58,7 +58,8 @@ func (h *DefaultHandler) cap(params []string) {
 
 func (h *DefaultHandler) join(params []string) {
 	if len(params) == 0 {
-		h.u.SendError(NewError(ErrNeedMoreParams))
+		h.u.SendError(NewError(ErrNeedMoreParams, JoinCmd))
+		return
 	}
 	channel := params[0]
 	if _, err := h.s.Join(h.u, channel); err != nil {
