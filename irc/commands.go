@@ -1,16 +1,17 @@
 package irc
 
 const (
-	CapCmd    = "CAP"
-	CapReqCmd = "REQ"
-	CapEndCmd = "END"
-	JoinCmd   = "JOIN"
-	NickCmd   = "NICK"
-	PassCmd   = "PASS"
-	PingCmd   = "PING"
-	PongCmd   = "PONG"
-	UserCmd   = "USER"
-	QuitCmd   = "QUIT"
+	CapCmd     = "CAP"
+	CapReqCmd  = "REQ"
+	CapEndCmd  = "END"
+	JoinCmd    = "JOIN"
+	NickCmd    = "NICK"
+	PassCmd    = "PASS"
+	PingCmd    = "PING"
+	PongCmd    = "PONG"
+	PrivMsgCmd = "PRIVMSG"
+	UserCmd    = "USER"
+	QuitCmd    = "QUIT"
 )
 
 const (

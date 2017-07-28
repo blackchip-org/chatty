@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 )
 
 var (
@@ -96,7 +97,7 @@ func (s *Server) handle(conn net.Conn, debug bool) {
 	sendq := make(chan Message, maxQueueLen)
 	user := &User{
 		ServerName: s.Name,
-		Host:       conn.RemoteAddr().String(),
+		Host:       hostnameFromAddr(conn.RemoteAddr().String()),
 		sendq:      sendq,
 	}
 	handler := s.NewHandlerFunc(s.service, user)
@@ -158,4 +159,14 @@ func writer(ctx context.Context, conn net.Conn, source Source, sendq <-chan Mess
 			return nil
 		}
 	}
+}
+
+func hostnameFromAddr(addr string) string {
+	i := strings.LastIndex(addr, ":")
+	ipAddr := addr[:i]
+	name, err := net.LookupAddr(ipAddr)
+	if err != nil {
+		return ipAddr
+	}
+	return name[0]
 }

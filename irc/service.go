@@ -1,6 +1,9 @@
 package irc
 
-import "sync"
+import (
+	"strings"
+	"sync"
+)
 
 type Service struct {
 	name     string
@@ -45,7 +48,6 @@ func (s *Service) Nick(u *User, nick string) *Error {
 	return nil
 }
 
-/*
 func (s *Service) PrivMsg(src *User, dest string, text string) *Error {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -54,9 +56,7 @@ func (s *Service) PrivMsg(src *User, dest string, text string) *Error {
 		if !ok {
 			return NewError(ErrNoSuchNick, dest)
 		}
-		if !ch.IsMember(src.Nick) {
-			return NewError(ErrCannotSendToChan, dest)
-		}
+		return ch.PrivMsg(src, text)
 	}
+	return nil
 }
-*/

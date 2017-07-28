@@ -37,6 +37,8 @@ func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 		// ignore
 	case PingCmd:
 		h.ping(cmd.Params)
+	case PrivMsgCmd:
+		h.privMsg(cmd.Params)
 	case UserCmd:
 		h.user(cmd.Params)
 	case QuitCmd:
@@ -89,6 +91,12 @@ func (h *DefaultHandler) nick(params []string) {
 
 func (h *DefaultHandler) ping(params []string) {
 	h.u.Send(PongCmd, params...)
+}
+
+func (h *DefaultHandler) privMsg(params []string) {
+	target := params[0]
+	text := params[1]
+	h.s.PrivMsg(h.u, target, text)
 }
 
 func (h *DefaultHandler) user(params []string) {

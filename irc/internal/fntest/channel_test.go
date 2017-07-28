@@ -41,3 +41,24 @@ func TestJoinNoChannel(t *testing.T) {
 		t.Fatalf("\n expected: %v \n got: %v", expected, got)
 	}
 }
+
+func TestMessage(t *testing.T) {
+	s, c := irc.NewTestServer()
+	defer s.Quit()
+
+	c.Login("bob", "bob 0 * :Bob Mackenzie")
+	c2 := s.NewClient()
+	c2.Login("doug", "doug 0 * :Doug Mackenzie")
+
+	c.Send("JOIN #elsinore")
+	c.WaitFor(irc.RplEndOfNames)
+	c2.Send("JOIN #elsinore")
+	c2.WaitFor(irc.RplEndOfNames)
+
+	c.Send("PRIVMSG #elsinore :good day, eh?")
+	got := c2.Recv()
+	expected := ":bob!bob@localhost PRIVMSG #elsinore :good day, eh?"
+	if expected != got {
+		t.Fatalf("\n expected: %v \n got: %v", expected, got)
+	}
+}

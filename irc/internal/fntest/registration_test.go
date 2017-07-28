@@ -23,6 +23,7 @@ func TestNickInUse(t *testing.T) {
 	defer s.Quit()
 	c.Send("NICK bob")
 	c.Send("USER bob 0 * :Bob Mackenzie")
+	c.WaitFor(irc.RplWelcome)
 
 	c2 := s.NewClient()
 	c2.Send("NICK bob")

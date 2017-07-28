@@ -60,9 +60,17 @@ func (c *Channel) Join(u *User) *Error {
 	return nil
 }
 
-func (c *Channel) IsMember(nick string) bool {
+func (c *Channel) PrivMsg(u *User, text string) *Error {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
-	_, exists := c.members[nick]
-	return exists
+	if _, exists := c.members[u.Nick]; !exists {
+		return NewError(ErrCannotSendToChan, c.name)
+	}
+	for _, member := range c.members {
+		if member.Nick == u.Nick {
+			continue
+		}
+		member.Relay(u, PrivMsgCmd, c.name, text)
+	}
+	return nil
 }
