@@ -3,6 +3,7 @@ package irc
 import (
 	"fmt"
 	"log"
+	"strings"
 )
 
 type Handler interface {
@@ -68,8 +69,9 @@ func (h *DefaultHandler) join(params []string) {
 		return
 	}
 	h.u.Reply(RplTopic, ch.Topic())
-	h.u.Reply(RplNameReply, ch.Nicks()...)
-	h.u.Reply(RplEndOfNames)
+	nicks := strings.Join(ch.Nicks(), " ")
+	h.u.Reply(RplNameReply, ch.Status(), ch.Name(), nicks)
+	h.u.Reply(RplEndOfNames, ch.Name())
 }
 
 func (h *DefaultHandler) nick(params []string) {

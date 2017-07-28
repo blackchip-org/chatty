@@ -5,3 +5,7 @@
 - http://chi.cs.uchicago.edu/chirc/irc_examples.html
 - https://en.wikipedia.org/wiki/List_of_Internet_Relay_Chat_commands
 - http://chi.cs.uchicago.edu/chirc/assignment3.html
+- https://modern.ircdocs.horse
+
+docker run -p 6667:6667 -d ircd 
+sudo tcpflow -c -i lo0 port 6667

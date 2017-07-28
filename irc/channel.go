@@ -1,12 +1,14 @@
 package irc
 
 import (
+	"sort"
 	"sync"
 )
 
 type Channel struct {
 	name    string
 	topic   string
+	status  string
 	members map[string]*User
 	mutex   sync.RWMutex
 }
@@ -30,6 +32,11 @@ func (c *Channel) Topic() string {
 	return c.topic
 }
 
+func (c *Channel) Status() string {
+	// https://modern.ircdocs.horse/#rplnamreply-353
+	return "="
+}
+
 func (c *Channel) Nicks() []string {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -37,6 +44,7 @@ func (c *Channel) Nicks() []string {
 	for _, u := range c.members {
 		nicks = append(nicks, u.Nick)
 	}
+	sort.Strings(nicks)
 	return nicks
 }
 

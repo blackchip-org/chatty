@@ -16,14 +16,14 @@ func TestJoinChannel(t *testing.T) {
 
 	c.Send("JOIN #elsinore")
 	got := c.WaitFor(irc.RplNameReply).Encode()
-	expected := ":example.com 353 bob bob"
+	expected := ":example.com 353 bob = #elsinore bob"
 	if expected != got {
 		t.Fatalf("\n expected: %v \n got: %v", expected, got)
 	}
 
 	c2.Send("JOIN #elsinore")
 	got = c2.WaitFor(irc.RplNameReply).Encode()
-	expected = ":example.com 353 doug bob doug"
+	expected = ":example.com 353 doug = #elsinore :bob doug"
 	if expected != got {
 		t.Fatalf("\n expected: %v \n got: %v", expected, got)
 	}
