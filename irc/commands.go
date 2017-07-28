@@ -27,13 +27,17 @@ const (
 )
 
 const (
-	ErrNeedMoreParams  = "461"
-	ErrNickNameInUse   = "433"
-	ErrNoNickNameGiven = "431"
+	ErrCannotSendToChan = "404"
+	ErrNeedMoreParams   = "461"
+	ErrNickNameInUse    = "433"
+	ErrNoNickNameGiven  = "431"
+	ErrNoSuchNick       = "401"
 )
 
 var ErrorText = map[string]string{
-	ErrNeedMoreParams:  "Not enough parameters",
-	ErrNickNameInUse:   "Nickname is already in use",
-	ErrNoNickNameGiven: "No nickname given",
+	ErrCannotSendToChan: "Cannot send to channel",
+	ErrNeedMoreParams:   "Not enough parameters",
+	ErrNickNameInUse:    "Nickname is already in use",
+	ErrNoNickNameGiven:  "No nickname given",
+	ErrNoSuchNick:       "No such nick/channel",
 }

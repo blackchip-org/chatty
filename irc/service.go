@@ -21,6 +21,18 @@ func (s *Service) Prefix() string {
 	return s.name
 }
 
+func (s *Service) Join(u *User, name string) (*Channel, *Error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	ch, exists := s.channels[name]
+	if !exists {
+		ch = NewChannel(name)
+		s.channels[name] = ch
+	}
+	err := ch.Join(u)
+	return ch, err
+}
+
 func (s *Service) Nick(u *User, nick string) *Error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -33,14 +45,18 @@ func (s *Service) Nick(u *User, nick string) *Error {
 	return nil
 }
 
-func (s *Service) Join(u *User, name string) (*Channel, *Error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	ch, exists := s.channels[name]
-	if !exists {
-		ch = NewChannel(name)
-		s.channels[name] = ch
+/*
+func (s *Service) PrivMsg(src *User, dest string, text string) *Error {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	if strings.HasPrefix(dest, "#") {
+		ch, ok := s.channels[dest]
+		if !ok {
+			return NewError(ErrNoSuchNick, dest)
+		}
+		if !ch.IsMember(src.Nick) {
+			return NewError(ErrCannotSendToChan, dest)
+		}
 	}
-	ch.Join(u)
-	return ch, nil
 }
+*/

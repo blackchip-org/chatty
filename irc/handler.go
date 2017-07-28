@@ -61,10 +61,15 @@ func (h *DefaultHandler) join(params []string) {
 		h.u.SendError(NewError(ErrNeedMoreParams, JoinCmd))
 		return
 	}
-	channel := params[0]
-	if _, err := h.s.Join(h.u, channel); err != nil {
+	name := params[0]
+	ch, err := h.s.Join(h.u, name)
+	if err != nil {
 		h.u.SendError(err)
+		return
 	}
+	h.u.Reply(RplTopic, ch.Topic())
+	h.u.Reply(RplNameReply, ch.Nicks()...)
+	h.u.Reply(RplEndOfNames)
 }
 
 func (h *DefaultHandler) nick(params []string) {

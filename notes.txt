@@ -4,3 +4,4 @@
 - https://www.alien.net.au/irc/irc2numerics.html
 - http://chi.cs.uchicago.edu/chirc/irc_examples.html
 - https://en.wikipedia.org/wiki/List_of_Internet_Relay_Chat_commands
+- http://chi.cs.uchicago.edu/chirc/assignment3.html
