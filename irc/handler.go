@@ -78,7 +78,7 @@ func (h *DefaultHandler) join(params []string) {
 
 func (h *DefaultHandler) nick(params []string) {
 	if len(params) != 1 {
-		h.u.SendError(NewError(ErrNoNickNameGiven))
+		h.u.SendError(NewError(ErrNeedMoreParams, NickCmd))
 		return
 	}
 	nick := params[0]
@@ -90,7 +90,14 @@ func (h *DefaultHandler) nick(params []string) {
 }
 
 func (h *DefaultHandler) ping(params []string) {
-	h.u.Send(PongCmd, params...)
+	if len(params) == 0 {
+		h.u.SendError(NewError(ErrNeedMoreParams, PingCmd))
+		return
+	}
+	outparams := append([]string{h.s.Prefix()}, params...)
+	fmt.Printf("*** PREFIX: %v\n", h.s.Prefix())
+	fmt.Printf("*** PARAMS: %v\n", outparams)
+	h.u.Send(PongCmd, outparams...)
 }
 
 func (h *DefaultHandler) privMsg(params []string) {

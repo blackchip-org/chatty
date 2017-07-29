@@ -3,6 +3,7 @@ package irc
 import (
 	"errors"
 	"fmt"
+	"sync"
 )
 
 type User struct {
@@ -13,6 +14,7 @@ type User struct {
 	ServerName string
 	Registered bool
 
+	mutex sync.RWMutex
 	err   error
 	sendq chan Message
 }
@@ -36,7 +38,11 @@ func (u *User) Relay(source Source, cmd string, params ...string) *User {
 }
 
 func (u *User) SendError(err *Error) *User {
-	m := Message{Prefix: u.ServerName, Cmd: err.Numeric, Params: err.Params}
+	nick := "*"
+	if u.Nick != "" {
+		nick = u.Nick
+	}
+	m := Message{Prefix: u.ServerName, Target: nick, Cmd: err.Numeric, Params: err.Params}
 	u.send(m)
 	return u
 }
@@ -71,5 +77,6 @@ func (u *User) Prefix() string {
 	if u.Host != "" {
 		host = u.Host
 	}
-	return fmt.Sprintf("%s!%s@%s", nick, name, host)
+	// FIXME: Not sure why ircd-irc2 returns a tilde in the name
+	return fmt.Sprintf("%s!~%s@%s", nick, name, host)
 }

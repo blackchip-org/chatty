@@ -10,7 +10,20 @@ type Channel struct {
 	topic   string
 	status  string
 	members map[string]*User
+	umodes  map[string]UserChanMode
 	mutex   sync.RWMutex
+}
+
+type UserChanMode string
+
+const (
+	UserChan   UserChanMode = ""
+	UserChanOp              = "o"
+)
+
+var UserChanPrefixes = map[UserChanMode]string{
+	UserChan:   "",
+	UserChanOp: "@",
 }
 
 func NewChannel(name string) *Channel {
@@ -18,6 +31,7 @@ func NewChannel(name string) *Channel {
 		name:    name,
 		topic:   "no topic",
 		members: make(map[string]*User),
+		umodes:  make(map[string]UserChanMode),
 	}
 	return c
 }
@@ -42,7 +56,8 @@ func (c *Channel) Nicks() []string {
 	defer c.mutex.RUnlock()
 	nicks := make([]string, 0, len(c.members))
 	for _, u := range c.members {
-		nicks = append(nicks, u.Nick)
+		prefix := UserChanPrefixes[c.umodes[u.Nick]]
+		nicks = append(nicks, prefix+u.Nick)
 	}
 	sort.Strings(nicks)
 	return nicks
@@ -51,6 +66,12 @@ func (c *Channel) Nicks() []string {
 func (c *Channel) Join(u *User) *Error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+
+	if len(c.members) == 0 {
+		c.umodes[u.Nick] = UserChanOp
+	} else {
+		c.umodes[u.Nick] = UserChan
+	}
 	c.members[u.Nick] = u
 	names := make([]string, 0, len(c.members))
 	for _, member := range c.members {

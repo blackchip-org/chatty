@@ -57,7 +57,8 @@ func (m Message) Encode() string {
 		fields = append(fields, m.Target)
 	}
 	for i, param := range m.Params {
-		if i == len(m.Params)-1 && strings.Contains(param, " ") {
+		// FIXME: Does the final parameter always need a colon?
+		if i == len(m.Params)-1 /*&& strings.Contains(param, " ")*/ {
 			param = ":" + param
 		}
 		fields = append(fields, param)

@@ -38,6 +38,7 @@ type Server struct {
 	NewHandlerFunc NewHandlerFunc
 
 	service  *Service
+	running  bool
 	quit     chan bool
 	quitting bool
 }
@@ -52,19 +53,20 @@ func (s *Server) ListenAndServe() error {
 	if s.NewHandlerFunc == nil {
 		s.NewHandlerFunc = NewDefaultHandler
 	}
-	s.service = newService()
+	s.service = newService(s.Name)
 	s.quit = make(chan bool)
 
 	listener, err := net.Listen("tcp", s.Addr)
 	if err != nil {
 		return fmt.Errorf("unable to start server: %v", err)
 	}
-	log.Printf("server started on %v", s.Addr)
+	//log.Printf("server started on %v", s.Addr)
 
 	go func() {
+		s.running = true
 		<-s.quit
 		s.quitting = true
-		log.Printf("server shutting down")
+		//log.Printf("server shutting down")
 		listener.Close()
 	}()
 
@@ -88,11 +90,13 @@ func (s *Server) Prefix() string {
 }
 
 func (s *Server) Quit() {
-	s.quit <- true
+	if s.running {
+		s.quit <- true
+	}
 }
 
 func (s *Server) handle(conn net.Conn, debug bool) {
-	log.Printf("connection established")
+	//log.Printf("connection established")
 
 	sendq := make(chan Message, maxQueueLen)
 	user := &User{
@@ -105,7 +109,7 @@ func (s *Server) handle(conn net.Conn, debug bool) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
 		cancel()
-		log.Println("connection closed")
+		//log.Println("connection closed")
 	}()
 
 	go func() {

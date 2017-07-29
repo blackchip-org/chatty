@@ -12,10 +12,11 @@ type Service struct {
 	nicks    map[string]*User
 }
 
-func newService() *Service {
+func newService(name string) *Service {
 	s := &Service{
 		channels: make(map[string]*Channel),
 		nicks:    make(map[string]*User),
+		name:     name,
 	}
 	return s
 }

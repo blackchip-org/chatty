@@ -9,8 +9,8 @@ var prefixTests = []struct {
 	host     string
 	prefix   string
 }{
-	{"full", "john", "doe", "example.com", "john!doe@example.com"},
-	{"empty", "", "", "", "*!*@*"},
+	{"full", "john", "doe", "example.com", "john!~doe@example.com"},
+	{"empty", "", "", "", "*!~*@*"},
 }
 
 func TestUser(t *testing.T) {

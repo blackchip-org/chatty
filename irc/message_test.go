@@ -12,22 +12,22 @@ var encodeTests = []struct {
 }{
 	{
 		"test full message",
-		":Macha!~macha@unaffiliated/macha PRIVMSG #botwar :Test response",
-		"Macha!~macha@unaffiliated/macha",
+		":bob!~bob@localhost PRIVMSG #elsinore :Good day, eh?",
+		"bob!~bob@localhost",
 		"PRIVMSG",
-		[]string{"#botwar", "Test response"},
+		[]string{"#elsinore", "Good day, eh?"},
 	},
 	{
 		"test full message without source",
-		"PRIVMSG #botwar :Test response",
+		"PRIVMSG #elsinore :Good day, eh?",
 		"",
 		"PRIVMSG",
-		[]string{"#botwar", "Test response"},
+		[]string{"#elsinore", "Good day, eh?"},
 	},
 	{
 		"test missing command",
-		":Macha!~macha@unaffiliated/macha",
-		"Macha!~macha@unaffiliated/macha",
+		":bob!~bob@localhost",
+		"bob!~bob@localhost",
 		"*",
 		[]string{},
 	},
@@ -38,13 +38,13 @@ func TestDecodeMessage(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			m := DecodeMessage(test.line)
 			if test.prefix != m.Prefix {
-				t.Errorf("expected prefix '%v', got '%v'", test.prefix, m.Prefix)
+				t.Errorf("\n want: %v \n have: %v", test.prefix, m.Prefix)
 			}
 			if test.cmd != m.Cmd {
-				t.Errorf("expected cmd '%v', got '%v'", test.cmd, m.Cmd)
+				t.Errorf("\n want: %v \n have: %v", test.cmd, m.Cmd)
 			}
 			if !reflect.DeepEqual(test.params, m.Params) {
-				t.Errorf("expected args %v, got %v", test.params, m.Params)
+				t.Errorf("\n want: %v \n have: %v", test.params, m.Params)
 			}
 		})
 	}
@@ -58,19 +58,28 @@ var decodeTests = []struct {
 	{
 		"test full message",
 		Message{
-			Prefix: "Macha!~macha@unaffiliated/macha",
+			Prefix: "bob!~bob@localhost",
 			Cmd:    "PRIVMSG",
-			Params: []string{"#botwar", "Test response"},
+			Params: []string{"#elsinore", "Good day, eh?"},
 		},
-		":Macha!~macha@unaffiliated/macha PRIVMSG #botwar :Test response",
+		":bob!~bob@localhost PRIVMSG #elsinore :Good day, eh?",
+	},
+	{
+		"test always have colon for last parameter",
+		Message{
+			Prefix: "bob!~bob@localhost",
+			Cmd:    "PRIVMSG",
+			Params: []string{"#elsinore", "eh?"},
+		},
+		":bob!~bob@localhost PRIVMSG #elsinore :eh?",
 	},
 	{
 		"test without source",
 		Message{
 			Cmd:    "PRIVMSG",
-			Params: []string{"#botwar", "Test response"},
+			Params: []string{"#elsinore", "Good day, eh?"},
 		},
-		"PRIVMSG #botwar :Test response",
+		"PRIVMSG #elsinore :Good day, eh?",
 	},
 	{
 		"test empty message",
