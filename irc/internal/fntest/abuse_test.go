@@ -9,6 +9,9 @@ import (
 )
 
 func TestMessageTooLong(t *testing.T) {
+	if test.RealServer {
+		t.Skip("skipping test on real server")
+	}
 	s, c := test.NewServer(t)
 	defer s.Quit()
 
@@ -24,6 +27,9 @@ func TestMessageTooLong(t *testing.T) {
 }
 
 func TestMessageNotTooLong(t *testing.T) {
+	if test.RealServer {
+		t.Skip("skipping test on real server")
+	}
 	s, c := test.NewServer(t)
 	defer s.Quit()
 

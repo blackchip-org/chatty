@@ -15,12 +15,12 @@ import (
 )
 
 var (
-	realServer bool
+	RealServer bool
 	nextPort   = 6667
 )
 
 func init() {
-	flag.BoolVar(&realServer, "real-server", false, "run tests using a real server")
+	flag.BoolVar(&RealServer, "real-server", false, "run tests using a real server")
 }
 
 type Server struct {
@@ -42,7 +42,7 @@ type Client struct {
 
 func NewServer(t *testing.T) (*Server, *Client) {
 	addr := ":" + strconv.Itoa(nextPort)
-	if !realServer {
+	if !RealServer {
 		nextPort++
 		if nextPort > 6668 {
 			nextPort = 6667
@@ -56,7 +56,7 @@ func NewServer(t *testing.T) (*Server, *Client) {
 		clients: make([]*Client, 0),
 		t:       t,
 	}
-	if !realServer {
+	if !RealServer {
 		go func() {
 			retries := 0
 			for {
@@ -74,7 +74,7 @@ func NewServer(t *testing.T) (*Server, *Client) {
 			}
 		}()
 	}
-	if realServer {
+	if RealServer {
 		ts.connDelay = 1 * time.Second
 	}
 	tc := ts.NewClient()
@@ -101,7 +101,7 @@ func (s *Server) NewClient() *Client {
 			tc.err = err
 		}
 	}()
-	if realServer {
+	if RealServer {
 		tc.debug = true
 	}
 	time.Sleep(s.connDelay)

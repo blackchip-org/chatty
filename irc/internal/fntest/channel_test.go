@@ -13,7 +13,7 @@ func TestJoinChannel(t *testing.T) {
 
 	c.Login("Batman", "batman 0 * :Bruce Wayne")
 	c2 := s.NewClient()
-	c2.Login("Robin", "robin 0 * :Jason Todd")
+	c2.Login("Robin", "robin 0 * :Boy Wonder")
 
 	c.Send("JOIN #gotham")
 	have := c.WaitFor(irc.RplNameReply).Encode()
@@ -48,18 +48,18 @@ func TestMessage(t *testing.T) {
 	s, c := test.NewServer(t)
 	defer s.Quit()
 
-	c.Login("bob", "bob 0 * :Bob Mackenzie")
+	c.Login("Batman", "batman 0 * :Bruce Wayne")
 	c2 := s.NewClient()
-	c2.Login("doug", "doug 0 * :Doug Mackenzie")
+	c2.Login("Robin", "robin 0 * :Boy Wonder")
 
-	c.Send("JOIN #elsinore")
-	c.WaitFor(irc.RplEndOfNames)
-	c2.Send("JOIN #elsinore")
+	c2.Send("JOIN #gotham")
 	c2.WaitFor(irc.RplEndOfNames)
+	c.Send("JOIN #gotham")
+	c.WaitFor(irc.RplEndOfNames)
 
-	c.Send("PRIVMSG #elsinore :good day, eh?")
-	have := c2.Recv()
-	want := ":bob!~bob@localhost PRIVMSG #elsinore :good day, eh?"
+	c2.Send("PRIVMSG #gotham :Holy hamburger Batman!")
+	have := c.Recv()
+	want := ":Robin!~robin@localhost PRIVMSG #gotham :Holy hamburger Batman!"
 	if want != have {
 		t.Fatalf("\n want: %v \n have: %v", want, have)
 	}
