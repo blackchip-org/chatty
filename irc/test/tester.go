@@ -212,15 +212,15 @@ func (c *Client) reader() error {
 }
 
 func (c *Client) WaitFor(reply string) irc.Message {
-	c.t.Logf("!!  [%p] waiting for %v", c, reply)
+	c.t.Logf(" !  [%p]\t%v wait", c, reply)
 	for {
 		m := c.RecvMessage()
 		if c.err != nil {
-			c.t.Logf("**  [%p] error %v", c, c.err)
+			c.t.Logf(" *  [%p]\terror %v", c, c.err)
 			return irc.Message{}
 		}
 		if m.Cmd == reply {
-			c.t.Logf("..  [%p] got %v", c, reply)
+			c.t.Logf(" .  [%p]\t%v recv", c, reply)
 			return m
 		}
 	}
