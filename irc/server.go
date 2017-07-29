@@ -60,13 +60,11 @@ func (s *Server) ListenAndServe() error {
 	if err != nil {
 		return fmt.Errorf("unable to start server: %v", err)
 	}
-	//log.Printf("server started on %v", s.Addr)
 
 	go func() {
 		s.running = true
 		<-s.quit
 		s.quitting = true
-		//log.Printf("server shutting down")
 		listener.Close()
 	}()
 
@@ -96,8 +94,6 @@ func (s *Server) Quit() {
 }
 
 func (s *Server) handle(conn net.Conn, debug bool) {
-	//log.Printf("connection established")
-
 	sendq := make(chan Message, maxQueueLen)
 	user := &User{
 		ServerName: s.Name,
@@ -107,10 +103,7 @@ func (s *Server) handle(conn net.Conn, debug bool) {
 	handler := s.NewHandlerFunc(s.service, user)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer func() {
-		cancel()
-		//log.Println("connection closed")
-	}()
+	defer cancel()
 
 	go func() {
 		defer cancel()
