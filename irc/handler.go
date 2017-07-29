@@ -95,8 +95,6 @@ func (h *DefaultHandler) ping(params []string) {
 		return
 	}
 	outparams := append([]string{h.s.Prefix()}, params...)
-	fmt.Printf("*** PREFIX: %v\n", h.s.Prefix())
-	fmt.Printf("*** PARAMS: %v\n", outparams)
 	h.u.Send(PongCmd, outparams...)
 }
 

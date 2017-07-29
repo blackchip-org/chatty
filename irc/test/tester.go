@@ -215,9 +215,7 @@ func (c *Client) WaitFor(reply string) irc.Message {
 			return irc.Message{}
 		}
 		if m.Cmd == reply {
-			if c.debug {
-				c.t.Logf("..  [%p] got %v", c, reply)
-			}
+			c.t.Logf("..  [%p] got %v", c, reply)
 			return m
 		}
 	}
