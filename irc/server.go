@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -117,11 +118,13 @@ func (s *Server) handle(conn net.Conn, debug bool) {
 }
 
 func reader(ctx context.Context, conn net.Conn, source Source, handler Handler, debug bool) error {
-	scanner := bufio.NewScanner(conn)
+	lreader := &io.LimitedReader{R: conn, N: MessageMaxLen}
+	scanner := bufio.NewScanner(lreader)
 	for {
 		if ok := scanner.Scan(); !ok {
 			return scanner.Err()
 		}
+		lreader.N = MessageMaxLen
 		line := scanner.Text()
 		if debug {
 			log.Printf(" -> [%v] %v", source.Prefix(), line)

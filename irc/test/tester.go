@@ -171,7 +171,9 @@ func (c *Client) Recv() string {
 		default:
 			retries++
 			if retries > 10 {
-				c.err = errors.New("recv timeout")
+				if c.err == nil {
+					c.err = errors.New("recv timeout")
+				}
 				return "recv timeout"
 			}
 			time.Sleep(100 * time.Millisecond)
@@ -180,6 +182,9 @@ func (c *Client) Recv() string {
 }
 
 func (c *Client) Drain() string {
+	if c.err != nil {
+		return ""
+	}
 	lines := make([]string, 0)
 	for {
 		line := c.Recv()
@@ -228,7 +233,7 @@ func (c *Client) Login(nick string, user string) {
 }
 
 func (c *Client) LoginDefault() {
-	c.Login("bob", "bob 0 * :Bob Mackenzie")
+	c.Login("Batman", "Batman 0 * :Bruce Wayne")
 }
 
 func (c *Client) Err() error {

@@ -4,6 +4,8 @@ import (
 	"strings"
 )
 
+const MessageMaxLen = 512
+
 type Message struct {
 	Prefix string
 	Cmd    string

@@ -105,6 +105,10 @@ func (h *DefaultHandler) privMsg(params []string) {
 }
 
 func (h *DefaultHandler) user(params []string) {
+	if len(params) != 4 {
+		h.u.SendError(NewError(ErrNeedMoreParams, UserCmd))
+		return
+	}
 	h.u.Name = params[0]
 	h.u.FullName = params[3]
 	h.checkHandshake()

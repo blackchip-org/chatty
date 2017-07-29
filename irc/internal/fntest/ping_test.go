@@ -13,7 +13,7 @@ func TestPingNoParams(t *testing.T) {
 	c.LoginDefault()
 	c.Send(irc.PingCmd)
 	have := c.Recv()
-	want := ":irc.localhost 461 bob PING :Not enough parameters"
+	want := ":irc.localhost 461 Batman PING :Not enough parameters"
 	if want != have {
 		t.Fatalf("\n want: %v \n have: %v", want, have)
 	}
