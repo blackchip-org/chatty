@@ -4,5 +4,5 @@
 
 This project has no practical value.
 
-Not yet.
+I thought it would be fun to  write an IRC server. Apparently all things retro are in these days. 
 
