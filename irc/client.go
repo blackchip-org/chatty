@@ -41,6 +41,10 @@ func (c *Client) Send(cmd string, params ...string) *Client {
 }
 
 func (c *Client) Reply(cmd string, params ...string) *Client {
+	text, exists := RplText[cmd]
+	if exists {
+		params = append(params, text)
+	}
 	m := Message{Prefix: c.ServerName, Target: c.U.Nick, Cmd: cmd, Params: params}
 	c.send(m)
 	return c

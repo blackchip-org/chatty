@@ -37,7 +37,6 @@ const (
 func NewChan(name string) *Chan {
 	c := &Chan{
 		name:    name,
-		topic:   "no topic",
 		clients: make(map[UserID]*Client),
 		umodes:  make(map[UserID]UserChanModes),
 	}

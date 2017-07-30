@@ -29,6 +29,10 @@ const (
 	RplYourHost   = "002"
 )
 
+var RplText = map[string]string{
+	RplNoTopic: "No topic is set",
+}
+
 const (
 	ErrAlreadyRegistered = "462"
 	ErrCannotSendToChan  = "404"

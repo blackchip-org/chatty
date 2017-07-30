@@ -98,7 +98,12 @@ func (h *DefaultHandler) join(params []string) {
 		h.c.SendError(err)
 		return
 	}
-	h.c.Reply(RplTopic, ch.Topic())
+	topic := ch.Topic()
+	if topic == "" {
+		h.c.Reply(RplNoTopic)
+	} else {
+		h.c.Reply(RplTopic, topic)
+	}
 	nicks := strings.Join(ch.Nicks(), " ")
 	h.c.Reply(RplNameReply, ch.Status(), ch.Name(), nicks)
 	h.c.Reply(RplEndOfNames, ch.Name())
