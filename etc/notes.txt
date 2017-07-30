@@ -13,3 +13,13 @@
 docker run -p 6667:6667 -d ircd 
 sudo tcpflow -c -i lo0 port 6667
 go test ./irc/internal/fntest --args --real-server
+
+:irc.localhost 004 Batman irc.localhost 2.11.2p3 aoOirw abeiIklmnoOpqrRstv
+:irc.localhost 005 Batman RFC2812 PREFIX=(ov)@+ CHANTYPES=#&!+ MODES=3 CHANLIMIT=#&!+:21 NICKLEN=15 TOPICLEN=255 KICKLEN=255 MAXLIST=beIR:64 CHANNELLEN=50 IDCHAN=!:5 CHANMODES=beIR,k,l,imnpstaqr :are supported by this server
+:irc.localhost 005 Batman PENALTY FNC EXCEPTS=e INVEX=I CASEMAPPING=ascii NETWORK=ExampleNet :are supported by this server
+:irc.localhost 042 Batman 000AAAAAA :your unique ID
+:irc.localhost 251 Batman :There are 1 users and 0 services on 1 servers
+:irc.localhost 254 Batman 15 :channels formed
+:irc.localhost 255 Batman :I have 1 users, 0 services and 0 servers
+:irc.localhost 265 Batman 1 1 :Current local users 1, max 1
+:irc.localhost 266 Batman 1 1 :Current global users 1, max 1

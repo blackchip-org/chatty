@@ -3,26 +3,29 @@ package irc
 import (
 	"strings"
 	"sync"
+	"time"
 )
 
 type Service struct {
-	name  string
-	mutex sync.RWMutex
-	chans map[string]*Chan
-	nicks *Nicks
+	Name    string
+	Started time.Time
+	mutex   sync.RWMutex
+	chans   map[string]*Chan
+	nicks   *Nicks
 }
 
 func newService(name string) *Service {
 	s := &Service{
-		chans: make(map[string]*Chan),
-		nicks: NewNicks(),
-		name:  name,
+		Name:    name,
+		Started: time.Now(),
+		chans:   make(map[string]*Chan),
+		nicks:   NewNicks(),
 	}
 	return s
 }
 
 func (s *Service) Origin() string {
-	return s.name
+	return s.Name
 }
 
 // ==== Commands

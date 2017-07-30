@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 )
 
 type Handler interface {
@@ -150,5 +151,6 @@ func (h *DefaultHandler) checkHandshake() error {
 func (h *DefaultHandler) welcome() {
 	h.c.Reply(RplWelcome, fmt.Sprintf("Welcome to the Internet Relay Chat Network %v", h.c.U.Nick)).
 		Reply(RplYourHost, fmt.Sprintf("Your host is %v running version %v", h.s.Origin(), Version)).
+		Reply(RplCreated, fmt.Sprintf("This server was started on %v", h.s.Started.Format(time.RFC1123))).
 		SendError(NewError(ErrNoMotd, "No MOTD set"))
 }
