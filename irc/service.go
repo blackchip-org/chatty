@@ -6,17 +6,17 @@ import (
 )
 
 type Service struct {
-	name     string
-	mutex    sync.RWMutex
-	channels map[string]*Channel
-	nicks    *Nicks
+	name  string
+	mutex sync.RWMutex
+	chans map[string]*Chan
+	nicks *Nicks
 }
 
 func newService(name string) *Service {
 	s := &Service{
-		channels: make(map[string]*Channel),
-		nicks:    NewNicks(),
-		name:     name,
+		chans: make(map[string]*Chan),
+		nicks: NewNicks(),
+		name:  name,
 	}
 	return s
 }
@@ -25,13 +25,13 @@ func (s *Service) Prefix() string {
 	return s.name
 }
 
-func (s *Service) Join(c *Client, name string) (*Channel, *Error) {
+func (s *Service) Join(c *Client, name string) (*Chan, *Error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	ch, exists := s.channels[name]
+	ch, exists := s.chans[name]
 	if !exists {
-		ch = NewChannel(name)
-		s.channels[name] = ch
+		ch = NewChan(name)
+		s.chans[name] = ch
 	}
 	err := ch.Join(c)
 	return ch, err
@@ -50,7 +50,7 @@ func (s *Service) PrivMsg(src *Client, dest string, text string) *Error {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	if strings.HasPrefix(dest, "#") {
-		ch, ok := s.channels[dest]
+		ch, ok := s.chans[dest]
 		if !ok {
 			return NewError(ErrNoSuchNick, dest)
 		}

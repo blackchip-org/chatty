@@ -5,73 +5,81 @@ import (
 	"sync"
 )
 
-type Channel struct {
+type Chan struct {
 	name    string
 	topic   string
 	status  string
 	clients map[UserID]*Client
-	umodes  map[UserID]UserChanMode
+	umodes  map[UserID]UserChanModes
 	mutex   sync.RWMutex
 }
 
-type UserChanMode string
-
-const (
-	UserChan   UserChanMode = ""
-	UserChanOp              = "o"
-)
-
-var UserChanPrefixes = map[UserChanMode]string{
-	UserChan:   "",
-	UserChanOp: "@",
+type UserChanModes struct {
+	Op    bool
+	Voice bool
 }
 
-func NewChannel(name string) *Channel {
-	c := &Channel{
+func (u UserChanModes) Prefix() string {
+	switch {
+	case u.Op:
+		return "@"
+	case u.Voice:
+		return "+"
+	}
+	return ""
+}
+
+const (
+	ChanModeOp    = "o"
+	ChanModeVoice = "v"
+)
+
+func NewChan(name string) *Chan {
+	c := &Chan{
 		name:    name,
 		topic:   "no topic",
 		clients: make(map[UserID]*Client),
-		umodes:  make(map[UserID]UserChanMode),
+		umodes:  make(map[UserID]UserChanModes),
 	}
 	return c
 }
 
-func (c *Channel) Name() string {
+func (c *Chan) Name() string {
 	return c.name
 }
 
-func (c *Channel) Topic() string {
+func (c *Chan) Topic() string {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 	return c.topic
 }
 
-func (c *Channel) Status() string {
+func (c *Chan) Status() string {
 	// https://modern.ircdocs.horse/#rplnamreply-353
 	return "="
 }
 
-func (c *Channel) Nicks() []string {
+func (c *Chan) Nicks() []string {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 	nicks := make([]string, 0, len(c.clients))
 	for _, cli := range c.clients {
-		prefix := UserChanPrefixes[c.umodes[cli.U.ID]]
+		prefix := c.umodes[cli.U.ID].Prefix()
 		nicks = append(nicks, prefix+cli.U.Nick)
 	}
 	sort.Strings(nicks)
 	return nicks
 }
 
-func (c *Channel) Join(cli *Client) *Error {
+func (c *Chan) Join(cli *Client) *Error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
+	umodes := UserChanModes{}
 	if len(c.clients) == 0 {
-		c.umodes[cli.U.ID] = UserChanOp
-	} else {
-		c.umodes[cli.U.ID] = UserChan
+		umodes.Op = true
 	}
+	c.umodes[cli.U.ID] = umodes
 	c.clients[cli.U.ID] = cli
 	names := make([]string, 0, len(c.clients))
 	for _, cli := range c.clients {
@@ -81,7 +89,7 @@ func (c *Channel) Join(cli *Client) *Error {
 	return nil
 }
 
-func (c *Channel) PrivMsg(src *Client, text string) *Error {
+func (c *Chan) PrivMsg(src *Client, text string) *Error {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 	if _, exists := c.clients[src.U.ID]; !exists {
