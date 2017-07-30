@@ -68,6 +68,6 @@ func TestRegistrationDeadline(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	c3.Login("Robin", "robin 0 * :Boy Wonder")
 	if c3.Err() != nil {
-		t.Fatal("unexpected error: %v", c3.Err())
+		t.Fatalf("unexpected error: %v", c3.Err())
 	}
 }
