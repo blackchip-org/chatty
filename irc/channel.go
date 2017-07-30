@@ -9,7 +9,7 @@ type Channel struct {
 	name    string
 	topic   string
 	status  string
-	members map[string]*User
+	clients map[string]*Client
 	umodes  map[string]UserChanMode
 	mutex   sync.RWMutex
 }
@@ -30,7 +30,7 @@ func NewChannel(name string) *Channel {
 	c := &Channel{
 		name:    name,
 		topic:   "no topic",
-		members: make(map[string]*User),
+		clients: make(map[string]*Client),
 		umodes:  make(map[string]UserChanMode),
 	}
 	return c
@@ -54,44 +54,44 @@ func (c *Channel) Status() string {
 func (c *Channel) Nicks() []string {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
-	nicks := make([]string, 0, len(c.members))
-	for _, u := range c.members {
-		prefix := UserChanPrefixes[c.umodes[u.Nick]]
-		nicks = append(nicks, prefix+u.Nick)
+	nicks := make([]string, 0, len(c.clients))
+	for _, cli := range c.clients {
+		prefix := UserChanPrefixes[c.umodes[cli.U.Nick]]
+		nicks = append(nicks, prefix+cli.U.Nick)
 	}
 	sort.Strings(nicks)
 	return nicks
 }
 
-func (c *Channel) Join(u *User) *Error {
+func (c *Channel) Join(cli *Client) *Error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	if len(c.members) == 0 {
-		c.umodes[u.Nick] = UserChanOp
+	if len(c.clients) == 0 {
+		c.umodes[cli.U.Nick] = UserChanOp
 	} else {
-		c.umodes[u.Nick] = UserChan
+		c.umodes[cli.U.Nick] = UserChan
 	}
-	c.members[u.Nick] = u
-	names := make([]string, 0, len(c.members))
-	for _, member := range c.members {
-		member.Relay(u, JoinCmd, c.name)
-		names = append(names, member.Nick)
+	c.clients[cli.U.Nick] = cli
+	names := make([]string, 0, len(c.clients))
+	for _, cli := range c.clients {
+		cli.Relay(cli.U, JoinCmd, c.name)
+		names = append(names, cli.U.Nick)
 	}
 	return nil
 }
 
-func (c *Channel) PrivMsg(u *User, text string) *Error {
+func (c *Channel) PrivMsg(src *Client, text string) *Error {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
-	if _, exists := c.members[u.Nick]; !exists {
+	if _, exists := c.clients[src.U.Nick]; !exists {
 		return NewError(ErrCannotSendToChan, c.name)
 	}
-	for _, member := range c.members {
-		if member.Nick == u.Nick {
+	for _, cli := range c.clients {
+		if cli.U.Nick == src.U.Nick {
 			continue
 		}
-		member.Relay(u, PrivMsgCmd, c.name, text)
+		cli.Relay(src.U, PrivMsgCmd, c.name, text)
 	}
 	return nil
 }

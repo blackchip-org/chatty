@@ -25,7 +25,7 @@ func (s *Service) Prefix() string {
 	return s.name
 }
 
-func (s *Service) Join(u *User, name string) (*Channel, *Error) {
+func (s *Service) Join(c *Client, name string) (*Channel, *Error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	ch, exists := s.channels[name]
@@ -33,23 +33,23 @@ func (s *Service) Join(u *User, name string) (*Channel, *Error) {
 		ch = NewChannel(name)
 		s.channels[name] = ch
 	}
-	err := ch.Join(u)
+	err := ch.Join(c)
 	return ch, err
 }
 
-func (s *Service) Nick(u *User, nick string) *Error {
+func (s *Service) Nick(c *Client, nick string) *Error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	if _, exists := s.nicks[nick]; exists {
 		return NewError(ErrNickNameInUse, nick)
 	}
-	delete(s.nicks, u.Nick)
-	s.nicks[nick] = u
-	u.Nick = nick
+	delete(s.nicks, c.U.Nick)
+	s.nicks[nick] = c.U
+	c.U.Nick = nick
 	return nil
 }
 
-func (s *Service) PrivMsg(src *User, dest string, text string) *Error {
+func (s *Service) PrivMsg(src *Client, dest string, text string) *Error {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	if strings.HasPrefix(dest, "#") {

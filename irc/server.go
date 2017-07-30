@@ -28,7 +28,7 @@ type Source interface {
 	Prefix() string
 }
 
-const maxQueueLen = 10
+const queueMaxLen = 10
 
 var quit = errors.New("QUIT")
 
@@ -95,24 +95,20 @@ func (s *Server) Quit() {
 }
 
 func (s *Server) handle(conn net.Conn, debug bool) {
-	sendq := make(chan Message, maxQueueLen)
-	user := &User{
-		ServerName: s.Name,
-		Host:       hostnameFromAddr(conn.RemoteAddr().String()),
-		sendq:      sendq,
-	}
-	handler := s.NewHandlerFunc(s.service, user)
+	host := hostnameFromAddr(conn.RemoteAddr().String())
+	cli := NewClientUser(s.Name, host)
+	handler := s.NewHandlerFunc(s.service, cli)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	go func() {
 		defer cancel()
-		if err := writer(ctx, conn, user, sendq, debug); err != nil {
+		if err := writer(ctx, conn, cli.U, cli.sendq, debug); err != nil {
 			log.Printf("error: %v", err)
 		}
 	}()
-	if err := reader(ctx, conn, user, handler, debug); err != nil {
+	if err := reader(ctx, conn, cli.U, handler, debug); err != nil {
 		log.Printf("error: %v", err)
 	}
 }
