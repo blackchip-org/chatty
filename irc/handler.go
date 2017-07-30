@@ -162,7 +162,7 @@ func (h *DefaultHandler) user(params []string) {
 
 func (h *DefaultHandler) checkHandshake() error {
 	if h.c.U.Nick != "" && h.c.U.Name != "" {
-		h.c.registered = true
+		h.c.SetRegistered()
 		h.welcome()
 	}
 	return nil

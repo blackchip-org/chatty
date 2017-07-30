@@ -24,6 +24,7 @@ func init() {
 }
 
 type Server struct {
+	Actual    *irc.Server
 	server    *irc.Server
 	clients   []*Client
 	err       error
@@ -56,6 +57,7 @@ func NewServer(t *testing.T) (*Server, *Client) {
 		clients: make([]*Client, 0),
 		t:       t,
 	}
+	ts.Actual = ts.server
 	if !RealServer {
 		go func() {
 			retries := 0

@@ -9,7 +9,7 @@ import (
 	"log"
 	"net"
 	"os"
-	"strings"
+	"time"
 )
 
 const (
@@ -37,10 +37,11 @@ const queueMaxLen = 10
 var quit = errors.New("QUIT")
 
 type Server struct {
-	Name           string
-	Addr           string
-	Debug          bool
-	NewHandlerFunc NewHandlerFunc
+	Name                 string
+	Addr                 string
+	Debug                bool
+	NewHandlerFunc       NewHandlerFunc
+	RegistrationDeadline time.Duration
 
 	service  *Service
 	running  bool
@@ -57,6 +58,9 @@ func (s *Server) ListenAndServe() error {
 	}
 	if s.NewHandlerFunc == nil {
 		s.NewHandlerFunc = NewDefaultHandler
+	}
+	if int(s.RegistrationDeadline) == 0 {
+		s.RegistrationDeadline = 10 * time.Second
 	}
 	s.service = newService(s.Name)
 	s.quit = make(chan bool)
@@ -99,8 +103,7 @@ func (s *Server) Quit() {
 }
 
 func (s *Server) handle(conn net.Conn, debug bool) {
-	host := hostnameFromAddr(conn.RemoteAddr().String())
-	cli := NewClientUser(s.Name, host)
+	cli := newClientUser(conn, s)
 	handler := s.NewHandlerFunc(s.service, cli)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -159,14 +162,4 @@ func writer(ctx context.Context, conn net.Conn, o Origin, sendq <-chan Message, 
 			return nil
 		}
 	}
-}
-
-func hostnameFromAddr(addr string) string {
-	i := strings.LastIndex(addr, ":")
-	ipAddr := addr[:i]
-	name, err := net.LookupAddr(ipAddr)
-	if err != nil {
-		return ipAddr
-	}
-	return name[0]
 }
