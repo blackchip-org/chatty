@@ -56,8 +56,8 @@ func (n *Nicks) Close() {
 }
 
 func (n *Nicks) Register(nick string, u *User) bool {
-	mutex.Lock()
-	defer mutex.Unlock()
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
 	if len(nick) > NickMaxLen {
 		nick = nick[:NickMaxLen]
 	}
@@ -71,8 +71,8 @@ func (n *Nicks) Register(nick string, u *User) bool {
 }
 
 func (n *Nicks) Unregister(u *User) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
 	delete(n.active, u.Nick)
 }
 
