@@ -50,3 +50,41 @@ func TestNoNick(t *testing.T) {
 		t.Fatalf("\n want: %v \n have: %v \n err:  %v", want, have, c.Err())
 	}
 }
+
+func TestNotRegistered(t *testing.T) {
+	s, c := test.NewServer(t)
+	defer s.Quit()
+	c.Send("JOIN #gotham")
+	have := c.Recv()
+
+	want := ":irc.localhost 451 * :You have not registered"
+	if want != have {
+		t.Fatalf("\n want: %v \n have: %v \n err:  %v", want, have, c.Err())
+	}
+}
+
+func TestAlreadyRegisteredUser(t *testing.T) {
+	s, c := test.NewServer(t)
+	defer s.Quit()
+	c.LoginDefault()
+	c.Send("USER Batman 0 * :Bruce Wayne")
+	have := c.Recv()
+
+	want := ":irc.localhost 462 Batman :Unauthorized command (already registered)"
+	if want != have {
+		t.Fatalf("\n want: %v \n have: %v \n err:  %v", want, have, c.Err())
+	}
+}
+
+func TestAlreadyRegisteredPass(t *testing.T) {
+	s, c := test.NewServer(t)
+	defer s.Quit()
+	c.LoginDefault()
+	c.Send("PASS swordfish")
+	have := c.Recv()
+
+	want := ":irc.localhost 462 Batman :Unauthorized command (already registered)"
+	if want != have {
+		t.Fatalf("\n want: %v \n have: %v \n err:  %v", want, have, c.Err())
+	}
+}

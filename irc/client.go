@@ -18,11 +18,12 @@ type User struct {
 }
 
 type Client struct {
-	U     *User
-	mutex sync.RWMutex
-	err   error
-	sendq chan Message
-	chans map[string]*Chan
+	U          *User
+	mutex      sync.RWMutex
+	err        error
+	registered bool
+	sendq      chan Message
+	chans      map[string]*Chan
 }
 
 var (

@@ -27,6 +27,14 @@ type DefaultHandler struct {
 
 func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 	handled := true
+
+	if !h.c.registered {
+		if cmd.Name != PassCmd && cmd.Name != NickCmd && cmd.Name != UserCmd {
+			h.c.SendError(NewError(ErrNotRegistered))
+			return true, nil
+		}
+	}
+
 	switch cmd.Name {
 	case CapCmd:
 		h.cap(cmd.Params)
@@ -37,7 +45,7 @@ func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 	case PartCmd:
 		h.part(cmd.Params)
 	case PassCmd:
-		// ignore
+		h.pass(cmd.Params)
 	case PingCmd:
 		h.ping(cmd.Params)
 	case PrivMsgCmd:
@@ -106,6 +114,13 @@ func (h *DefaultHandler) part(params []string) {
 	}
 }
 
+func (h *DefaultHandler) pass(params []string) {
+	if h.c.registered {
+		h.c.SendError(NewError(ErrAlreadyRegistered))
+		return
+	}
+}
+
 func (h *DefaultHandler) ping(params []string) {
 	if len(params) == 0 {
 		h.c.SendError(NewError(ErrNeedMoreParams, PingCmd))
@@ -130,6 +145,10 @@ func (h *DefaultHandler) quit(params []string) {
 }
 
 func (h *DefaultHandler) user(params []string) {
+	if h.c.registered {
+		h.c.SendError(NewError(ErrAlreadyRegistered))
+		return
+	}
 	if len(params) != 4 {
 		h.c.SendError(NewError(ErrNeedMoreParams, UserCmd))
 		return
@@ -143,6 +162,7 @@ func (h *DefaultHandler) user(params []string) {
 
 func (h *DefaultHandler) checkHandshake() error {
 	if h.c.U.Nick != "" && h.c.U.Name != "" {
+		h.c.registered = true
 		h.welcome()
 	}
 	return nil
