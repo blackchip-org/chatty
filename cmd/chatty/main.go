@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 
 	"github.com/blackchip-org/chatty/irc"
 )
@@ -23,5 +24,8 @@ func main() {
 		Debug: debug,
 		Name:  name,
 	}
-	s.ListenAndServe()
+	err := s.ListenAndServe()
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
+	}
 }

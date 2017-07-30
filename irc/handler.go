@@ -149,7 +149,6 @@ func (h *DefaultHandler) checkHandshake() error {
 
 func (h *DefaultHandler) welcome() {
 	h.c.Reply(RplWelcome, fmt.Sprintf("Welcome to the Internet Relay Chat Network %v", h.c.U.Nick)).
-		Reply(RplYourHost, fmt.Sprintf("Your host is %v running version chatty-0", h.s.Origin())).
-		Reply(RplMotdStart, "Message of the day!").
-		Reply(RplEndOfMotd)
+		Reply(RplYourHost, fmt.Sprintf("Your host is %v running version %v", h.s.Origin(), Version)).
+		SendError(NewError(ErrNoMotd, "No MOTD set"))
 }

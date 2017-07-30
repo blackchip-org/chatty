@@ -211,25 +211,31 @@ func (c *Client) reader() error {
 	}
 }
 
-func (c *Client) WaitFor(reply string) irc.Message {
-	c.t.Logf(" !  [%p]\t%v wait", c, reply)
+func (c *Client) WaitForAny(expecting []string) irc.Message {
+	c.t.Logf(" !  [%p]\t%v wait", c, strings.Join(expecting, " or "))
 	for {
 		m := c.RecvMessage()
 		if c.err != nil {
 			c.t.Logf(" *  [%p]\terror %v", c, c.err)
 			return irc.Message{}
 		}
-		if m.Cmd == reply {
-			c.t.Logf(" .  [%p]\t%v recv", c, reply)
-			return m
+		for _, expect := range expecting {
+			if m.Cmd == expect {
+				c.t.Logf(" .  [%p]\t%v recv", c, expect)
+				return m
+			}
 		}
 	}
+}
+
+func (c *Client) WaitFor(reply string) irc.Message {
+	return c.WaitForAny([]string{reply})
 }
 
 func (c *Client) Login(nick string, user string) {
 	c.Send("NICK " + nick)
 	c.Send("USER " + user)
-	c.WaitFor(irc.RplEndOfMotd)
+	c.WaitForAny([]string{irc.RplEndOfMotd, irc.ErrNoMotd})
 }
 
 func (c *Client) LoginDefault() {

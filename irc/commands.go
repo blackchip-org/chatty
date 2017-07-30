@@ -32,6 +32,7 @@ const (
 	ErrCannotSendToChan = "404"
 	ErrNeedMoreParams   = "461"
 	ErrNickNameInUse    = "433"
+	ErrNoMotd           = "422"
 	ErrNoNickNameGiven  = "431"
 	ErrNoSuchChannel    = "403"
 	ErrNoSuchNick       = "401"

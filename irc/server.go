@@ -12,6 +12,10 @@ import (
 	"strings"
 )
 
+const (
+	Version = "chatty-0"
+)
+
 var (
 	Addr       = ":6667"
 	ServerName = "localhost"
