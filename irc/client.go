@@ -56,8 +56,8 @@ func (c *Client) Reply(cmd string, params ...string) *Client {
 	return c
 }
 
-func (c *Client) Relay(source Source, cmd string, params ...string) *Client {
-	m := Message{Prefix: source.Prefix(), Cmd: cmd, Params: params}
+func (c *Client) Relay(o Origin, cmd string, params ...string) *Client {
+	m := Message{Prefix: o.Origin(), Cmd: cmd, Params: params}
 	c.send(m)
 	return c
 }
@@ -88,7 +88,7 @@ func (c *Client) Quit() {
 	c.err = quit
 }
 
-func (u User) Prefix() string {
+func (u User) Origin() string {
 	nick := "*"
 	name := "*"
 	host := "*"

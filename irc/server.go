@@ -24,8 +24,8 @@ func init() {
 	}
 }
 
-type Source interface {
-	Prefix() string
+type Origin interface {
+	Origin() string
 }
 
 const queueMaxLen = 10
@@ -113,7 +113,7 @@ func (s *Server) handle(conn net.Conn, debug bool) {
 	}
 }
 
-func reader(ctx context.Context, conn net.Conn, source Source, handler Handler, debug bool) error {
+func reader(ctx context.Context, conn net.Conn, o Origin, handler Handler, debug bool) error {
 	lreader := &io.LimitedReader{R: conn, N: MessageMaxLen}
 	scanner := bufio.NewScanner(lreader)
 	for {
@@ -123,7 +123,7 @@ func reader(ctx context.Context, conn net.Conn, source Source, handler Handler, 
 		lreader.N = MessageMaxLen
 		line := scanner.Text()
 		if debug {
-			log.Printf(" -> [%v] %v", source.Prefix(), line)
+			log.Printf(" -> [%v] %v", o.Origin(), line)
 		}
 		m := DecodeMessage(line)
 		if _, err := handler.Handle(Command{Name: m.Cmd, Params: m.Params}); err != nil {
@@ -136,14 +136,14 @@ func reader(ctx context.Context, conn net.Conn, source Source, handler Handler, 
 	}
 }
 
-func writer(ctx context.Context, conn net.Conn, source Source, sendq <-chan Message, debug bool) error {
+func writer(ctx context.Context, conn net.Conn, o Origin, sendq <-chan Message, debug bool) error {
 	w := bufio.NewWriter(conn)
 	for {
 		select {
 		case m := <-sendq:
 			line := m.Encode()
 			if debug {
-				log.Printf("<-  [%v] %v", source.Prefix(), line)
+				log.Printf("<-  [%v] %v", o.Origin(), line)
 			}
 			if _, err := w.WriteString(line + "\n"); err != nil {
 				return err
