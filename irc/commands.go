@@ -2,6 +2,7 @@ package irc
 
 const (
 	CapCmd     = "CAP"
+	CapLsCmd   = "LS"
 	CapReqCmd  = "REQ"
 	CapEndCmd  = "END"
 	JoinCmd    = "JOIN"
@@ -31,6 +32,7 @@ const (
 const (
 	ErrAlreadyRegistered = "462"
 	ErrCannotSendToChan  = "404"
+	ErrInvalidCapCmd     = "410"
 	ErrNeedMoreParams    = "461"
 	ErrNickNameInUse     = "433"
 	ErrNoMotd            = "422"
@@ -44,6 +46,7 @@ const (
 var ErrorText = map[string]string{
 	ErrAlreadyRegistered: "Unauthorized command (already registered)",
 	ErrCannotSendToChan:  "Cannot send to channel",
+	ErrInvalidCapCmd:     "Invalid CAP command",
 	ErrNeedMoreParams:    "Not enough parameters",
 	ErrNickNameInUse:     "Nickname is already in use",
 	ErrNoNickNameGiven:   "No nickname given",

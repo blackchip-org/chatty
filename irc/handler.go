@@ -25,11 +25,19 @@ type DefaultHandler struct {
 	c *Client
 }
 
+var prereg = map[string]bool{
+	PassCmd: true,
+	NickCmd: true,
+	UserCmd: true,
+	CapCmd:  true,
+}
+
 func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 	handled := true
 
 	if !h.c.registered {
-		if cmd.Name != PassCmd && cmd.Name != NickCmd && cmd.Name != UserCmd {
+		allowed := prereg[cmd.Name]
+		if !allowed {
 			h.c.SendError(NewError(ErrNotRegistered))
 			return true, nil
 		}
@@ -62,11 +70,20 @@ func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 }
 
 func (h *DefaultHandler) cap(params []string) {
-	switch params[0] {
+	if len(params) == 0 {
+		h.c.SendError(NewError(ErrNeedMoreParams))
+		return
+	}
+	capcmd := params[0]
+	switch capcmd {
+	case CapLsCmd:
+		h.c.Reply(CapCmd, CapLsCmd)
 	case CapReqCmd:
 		h.c.Reply("CAP", "*", "ACK", "multi-prefix")
 	case CapEndCmd:
 		h.welcome()
+	default:
+		h.c.SendError(NewError(ErrInvalidCapCmd, capcmd))
 	}
 }
 
