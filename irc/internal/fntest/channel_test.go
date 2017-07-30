@@ -64,3 +64,55 @@ func TestMessage(t *testing.T) {
 		t.Fatalf("\n want: %v \n have: %v", want, have)
 	}
 }
+
+func TestPartChannel(t *testing.T) {
+	s, c := test.NewServer(t)
+	defer s.Quit()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne")
+	c2 := s.NewClient()
+	c2.Login("Robin", "robin 0 * :Boy Wonder")
+
+	c.Send("JOIN #gotham")
+	c.WaitFor(irc.RplEndOfNames).Encode()
+	c2.Send("JOIN #gotham")
+	c2.WaitFor(irc.RplEndOfNames).Encode()
+	c.WaitFor(irc.JoinCmd)
+
+	c.Send("PART #gotham :To the Batcave, Robin!")
+	have := c.Recv()
+	want := ":Batman!~batman@localhost PART #gotham :To the Batcave, Robin!"
+	if want != have {
+		t.Fatalf("\n want: %v \n have: %v", want, have)
+	}
+
+	have = c2.Recv()
+	want = ":Batman!~batman@localhost PART #gotham :To the Batcave, Robin!"
+	if want != have {
+		t.Fatalf("\n want: %v \n have: %v", want, have)
+	}
+
+}
+
+func TestQuit(t *testing.T) {
+	s, c := test.NewServer(t)
+	defer s.Quit()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne")
+	c2 := s.NewClient()
+	c2.Login("Robin", "robin 0 * :Boy Wonder")
+
+	c.Send("JOIN #gotham")
+	c.WaitFor(irc.RplEndOfNames)
+	c2.Send("JOIN #gotham")
+	c2.WaitFor(irc.RplEndOfNames)
+
+	c.Send("QUIT :To the Batcave, Robin!")
+	have := c2.Recv()
+	want1 := ":Batman!~batman@localhost QUIT :To the Batcave, Robin!"
+	want2 := ":Batman!~batman@localhost QUIT :\"To the Batcave, Robin!\""
+
+	if want1 != have && want2 != have {
+		t.Fatalf("\n want: %v \n or  : %v \n have: %v", want1, want2, have)
+	}
+}

@@ -21,9 +21,11 @@ func newService(name string) *Service {
 	return s
 }
 
-func (s *Service) Prefix() string {
+func (s *Service) Origin() string {
 	return s.name
 }
+
+// ==== Commands
 
 func (s *Service) Join(c *Client, name string) (*Chan, *Error) {
 	s.mutex.Lock()
@@ -34,7 +36,11 @@ func (s *Service) Join(c *Client, name string) (*Chan, *Error) {
 		s.chans[name] = ch
 	}
 	err := ch.Join(c)
-	return ch, err
+	if err != nil {
+		return ch, err
+	}
+	c.chans[name] = ch
+	return ch, nil
 }
 
 func (s *Service) Nick(c *Client, nick string) *Error {
@@ -43,6 +49,21 @@ func (s *Service) Nick(c *Client, nick string) *Error {
 	if ok := s.nicks.Register(nick, c.U); !ok {
 		return NewError(ErrNickNameInUse, nick)
 	}
+	return nil
+}
+
+func (s *Service) Part(c *Client, name string, reason string) *Error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	ch, exists := s.chans[name]
+	if !exists {
+		return NewError(ErrNoSuchChannel, name)
+	}
+	err := ch.Part(c, reason)
+	if err != nil {
+		return err
+	}
+	delete(c.chans, name)
 	return nil
 }
 
@@ -57,4 +78,23 @@ func (s *Service) PrivMsg(src *Client, dest string, text string) *Error {
 		return ch.PrivMsg(src, text)
 	}
 	return nil
+}
+
+func (s *Service) Quit(src *Client, reason string) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	notify := make(map[UserID]*Client)
+	for _, ch := range src.chans {
+		members := ch.Members()
+		for _, m := range members {
+			if m.U.ID == src.U.ID {
+				continue
+			}
+			notify[m.U.ID] = m
+		}
+	}
+	for _, cli := range notify {
+		cli.Relay(src.U, QuitCmd, reason)
+	}
+	src.Quit()
 }

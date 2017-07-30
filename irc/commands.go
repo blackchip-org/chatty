@@ -6,6 +6,7 @@ const (
 	CapEndCmd  = "END"
 	JoinCmd    = "JOIN"
 	NickCmd    = "NICK"
+	PartCmd    = "PART"
 	PassCmd    = "PASS"
 	PingCmd    = "PING"
 	PongCmd    = "PONG"
@@ -32,7 +33,9 @@ const (
 	ErrNeedMoreParams   = "461"
 	ErrNickNameInUse    = "433"
 	ErrNoNickNameGiven  = "431"
+	ErrNoSuchChannel    = "403"
 	ErrNoSuchNick       = "401"
+	ErrNotOnChannel     = "442"
 )
 
 var ErrorText = map[string]string{
@@ -40,5 +43,7 @@ var ErrorText = map[string]string{
 	ErrNeedMoreParams:   "Not enough parameters",
 	ErrNickNameInUse:    "Nickname is already in use",
 	ErrNoNickNameGiven:  "No nickname given",
+	ErrNoSuchChannel:    "No such channel",
 	ErrNoSuchNick:       "No such nick/channel",
+	ErrNotOnChannel:     "You're not on that channel",
 }

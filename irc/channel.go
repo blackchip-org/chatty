@@ -89,6 +89,22 @@ func (c *Chan) Join(cli *Client) *Error {
 	return nil
 }
 
+func (c *Chan) Part(src *Client, reason string) *Error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	_, exists := c.clients[src.U.ID]
+	if !exists {
+		return NewError(ErrNotOnChannel)
+	}
+	for _, cli := range c.clients {
+		cli.Relay(src.U, PartCmd, c.name, reason)
+	}
+	delete(c.clients, src.U.ID)
+	delete(c.umodes, src.U.ID)
+	return nil
+}
+
 func (c *Chan) PrivMsg(src *Client, text string) *Error {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -102,4 +118,14 @@ func (c *Chan) PrivMsg(src *Client, text string) *Error {
 		cli.Relay(src.U, PrivMsgCmd, c.name, text)
 	}
 	return nil
+}
+
+func (c *Chan) Members() []*Client {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	members := make([]*Client, 0, len(c.clients))
+	for _, client := range c.clients {
+		members = append(members, client)
+	}
+	return members
 }

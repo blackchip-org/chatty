@@ -33,6 +33,8 @@ func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 		h.join(cmd.Params)
 	case NickCmd:
 		h.nick(cmd.Params)
+	case PartCmd:
+		h.part(cmd.Params)
 	case PassCmd:
 		// ignore
 	case PingCmd:
@@ -42,7 +44,7 @@ func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 	case UserCmd:
 		h.user(cmd.Params)
 	case QuitCmd:
-		h.c.Quit()
+		h.quit(cmd.Params)
 	default:
 		handled = false
 		log.Printf("unhandled message: %+v", cmd)
@@ -89,12 +91,26 @@ func (h *DefaultHandler) nick(params []string) {
 	h.checkHandshake()
 }
 
+func (h *DefaultHandler) part(params []string) {
+	if len(params) < 1 {
+		h.c.SendError(NewError(ErrNeedMoreParams, PartCmd))
+	}
+	chname := params[0]
+	reason := ""
+	if len(params) >= 2 {
+		reason = params[1]
+	}
+	if err := h.s.Part(h.c, chname, reason); err != nil {
+		h.c.SendError(err)
+	}
+}
+
 func (h *DefaultHandler) ping(params []string) {
 	if len(params) == 0 {
 		h.c.SendError(NewError(ErrNeedMoreParams, PingCmd))
 		return
 	}
-	outparams := append([]string{h.s.Prefix()}, params...)
+	outparams := append([]string{h.s.Origin()}, params...)
 	h.c.Send(PongCmd, outparams...)
 }
 
@@ -102,6 +118,14 @@ func (h *DefaultHandler) privMsg(params []string) {
 	target := params[0]
 	text := params[1]
 	h.s.PrivMsg(h.c, target, text)
+}
+
+func (h *DefaultHandler) quit(params []string) {
+	reason := ""
+	if len(params) > 0 {
+		reason = params[0]
+	}
+	h.s.Quit(h.c, reason)
 }
 
 func (h *DefaultHandler) user(params []string) {
@@ -125,7 +149,7 @@ func (h *DefaultHandler) checkHandshake() error {
 
 func (h *DefaultHandler) welcome() {
 	h.c.Reply(RplWelcome, fmt.Sprintf("Welcome to the Internet Relay Chat Network %v", h.c.U.Nick)).
-		Reply(RplYourHost, fmt.Sprintf("Your host is %v running version chatty-0", h.s.Prefix())).
+		Reply(RplYourHost, fmt.Sprintf("Your host is %v running version chatty-0", h.s.Origin())).
 		Reply(RplMotdStart, "Message of the day!").
 		Reply(RplEndOfMotd)
 }

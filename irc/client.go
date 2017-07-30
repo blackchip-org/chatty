@@ -22,6 +22,7 @@ type Client struct {
 	mutex sync.RWMutex
 	err   error
 	sendq chan Message
+	chans map[string]*Chan
 }
 
 var (
@@ -38,6 +39,7 @@ func NewClientUser(serverName string, host string) *Client {
 			Host:       host,
 		},
 		sendq: make(chan Message, queueMaxLen),
+		chans: make(map[string]*Chan),
 	}
 	nextID++
 	mutex.Unlock()
