@@ -9,13 +9,13 @@ type Service struct {
 	name     string
 	mutex    sync.RWMutex
 	channels map[string]*Channel
-	nicks    map[string]*User
+	nicks    *Nicks
 }
 
 func newService(name string) *Service {
 	s := &Service{
 		channels: make(map[string]*Channel),
-		nicks:    make(map[string]*User),
+		nicks:    NewNicks(),
 		name:     name,
 	}
 	return s
@@ -40,12 +40,9 @@ func (s *Service) Join(c *Client, name string) (*Channel, *Error) {
 func (s *Service) Nick(c *Client, nick string) *Error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	if _, exists := s.nicks[nick]; exists {
+	if ok := s.nicks.Register(nick, c.U); !ok {
 		return NewError(ErrNickNameInUse, nick)
 	}
-	delete(s.nicks, c.U.Nick)
-	s.nicks[nick] = c.U
-	c.U.Nick = nick
 	return nil
 }
 

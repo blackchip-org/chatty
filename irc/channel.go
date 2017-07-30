@@ -9,8 +9,8 @@ type Channel struct {
 	name    string
 	topic   string
 	status  string
-	clients map[string]*Client
-	umodes  map[string]UserChanMode
+	clients map[UserID]*Client
+	umodes  map[UserID]UserChanMode
 	mutex   sync.RWMutex
 }
 
@@ -30,8 +30,8 @@ func NewChannel(name string) *Channel {
 	c := &Channel{
 		name:    name,
 		topic:   "no topic",
-		clients: make(map[string]*Client),
-		umodes:  make(map[string]UserChanMode),
+		clients: make(map[UserID]*Client),
+		umodes:  make(map[UserID]UserChanMode),
 	}
 	return c
 }
@@ -56,7 +56,7 @@ func (c *Channel) Nicks() []string {
 	defer c.mutex.RUnlock()
 	nicks := make([]string, 0, len(c.clients))
 	for _, cli := range c.clients {
-		prefix := UserChanPrefixes[c.umodes[cli.U.Nick]]
+		prefix := UserChanPrefixes[c.umodes[cli.U.ID]]
 		nicks = append(nicks, prefix+cli.U.Nick)
 	}
 	sort.Strings(nicks)
@@ -68,11 +68,11 @@ func (c *Channel) Join(cli *Client) *Error {
 	defer c.mutex.Unlock()
 
 	if len(c.clients) == 0 {
-		c.umodes[cli.U.Nick] = UserChanOp
+		c.umodes[cli.U.ID] = UserChanOp
 	} else {
-		c.umodes[cli.U.Nick] = UserChan
+		c.umodes[cli.U.ID] = UserChan
 	}
-	c.clients[cli.U.Nick] = cli
+	c.clients[cli.U.ID] = cli
 	names := make([]string, 0, len(c.clients))
 	for _, cli := range c.clients {
 		cli.Relay(cli.U, JoinCmd, c.name)
@@ -84,7 +84,7 @@ func (c *Channel) Join(cli *Client) *Error {
 func (c *Channel) PrivMsg(src *Client, text string) *Error {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
-	if _, exists := c.clients[src.U.Nick]; !exists {
+	if _, exists := c.clients[src.U.ID]; !exists {
 		return NewError(ErrCannotSendToChan, c.name)
 	}
 	for _, cli := range c.clients {
