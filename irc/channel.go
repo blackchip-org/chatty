@@ -14,25 +14,17 @@ type Chan struct {
 	mutex   sync.RWMutex
 }
 
-type UserChanModes struct {
-	Op    bool
-	Voice bool
-}
-
-func (u UserChanModes) Prefix() string {
-	switch {
-	case u.Op:
-		return "@"
-	case u.Voice:
-		return "+"
-	}
-	return ""
-}
-
 const (
-	ChanModeOp    = "o"
-	ChanModeVoice = "v"
+	ChanPrefixNetwork = "#"
+	ChanPrefixLocal   = "&"
 )
+
+func HasChanPrefix(chname string) bool {
+	if chname == "" {
+		return false
+	}
+	return chname[0] == '#' || chname[0] == '&'
+}
 
 func NewChan(name string) *Chan {
 	c := &Chan{

@@ -16,7 +16,9 @@ type Client struct {
 	err        error
 	registered bool
 	sendq      chan Message
-	chans      map[string]*Chan
+
+	chans map[string]*Chan
+	modes UserModes
 }
 
 func newClientUser(conn net.Conn, server *Server) *Client {

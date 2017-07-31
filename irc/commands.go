@@ -6,6 +6,7 @@ const (
 	CapReqCmd  = "REQ"
 	CapEndCmd  = "END"
 	JoinCmd    = "JOIN"
+	ModeCmd    = "MODE"
 	NickCmd    = "NICK"
 	PartCmd    = "PART"
 	PassCmd    = "PASS"
@@ -45,6 +46,7 @@ const (
 	ErrNoSuchNick        = "401"
 	ErrNotOnChannel      = "442"
 	ErrNotRegistered     = "451"
+	ErrUModeUnknownFlag  = "501"
 )
 
 var ErrorText = map[string]string{
@@ -58,4 +60,5 @@ var ErrorText = map[string]string{
 	ErrNoSuchNick:        "No such nick/channel",
 	ErrNotOnChannel:      "You're not on that channel",
 	ErrNotRegistered:     "You have not registered",
+	ErrUModeUnknownFlag:  "Unknown MODE flag",
 }

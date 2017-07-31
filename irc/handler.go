@@ -48,6 +48,8 @@ func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 		h.cap(cmd.Params)
 	case JoinCmd:
 		h.join(cmd.Params)
+	case ModeCmd:
+		//h.mode(cmd.Params)
 	case NickCmd:
 		h.nick(cmd.Params)
 	case PartCmd:
@@ -108,6 +110,26 @@ func (h *DefaultHandler) join(params []string) {
 	h.c.Reply(RplNameReply, ch.Status(), ch.Name(), nicks)
 	h.c.Reply(RplEndOfNames, ch.Name())
 }
+
+/*
+func (h *DefaultHandler) mode(params []string) {
+	if len(params) == 0 {
+		h.c.SendError(NewError(ErrNeedMoreParams, ModeCmd))
+		return
+	}
+	if HasChanPrefix(params[0]) {
+		panic("not done")
+	} else {
+		nick := params[0]
+		if len(params) > 1 {
+			h.s.SetUserMode(nick, params)
+		} else {
+			h.s.
+		}
+		h.modeUser(params)
+	}
+}
+*/
 
 func (h *DefaultHandler) nick(params []string) {
 	if len(params) != 1 {
