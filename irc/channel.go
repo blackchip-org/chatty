@@ -10,7 +10,7 @@ type Chan struct {
 	topic   string
 	status  string
 	clients map[UserID]*Client
-	umodes  map[UserID]UserChanModes
+	modes   *ChanModes
 	mutex   sync.RWMutex
 }
 
@@ -30,7 +30,7 @@ func NewChan(name string) *Chan {
 	c := &Chan{
 		name:    name,
 		clients: make(map[UserID]*Client),
-		umodes:  make(map[UserID]UserChanModes),
+		modes:   NewChanModes(),
 	}
 	return c
 }
@@ -55,7 +55,7 @@ func (c *Chan) Nicks() []string {
 	defer c.mutex.RUnlock()
 	nicks := make([]string, 0, len(c.clients))
 	for _, cli := range c.clients {
-		prefix := c.umodes[cli.U.ID].Prefix()
+		prefix := c.modes.UserPrefix(cli.U.ID)
 		nicks = append(nicks, prefix+cli.U.Nick)
 	}
 	sort.Strings(nicks)
@@ -66,11 +66,9 @@ func (c *Chan) Join(cli *Client) *Error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	umodes := UserChanModes{}
 	if len(c.clients) == 0 {
-		umodes.Op = true
+		c.modes.Operators[cli.U.ID] = true
 	}
-	c.umodes[cli.U.ID] = umodes
 	c.clients[cli.U.ID] = cli
 	names := make([]string, 0, len(c.clients))
 	for _, cli := range c.clients {
@@ -91,8 +89,9 @@ func (c *Chan) Part(src *Client, reason string) *Error {
 	for _, cli := range c.clients {
 		cli.Relay(src.U, PartCmd, c.name, reason)
 	}
+	delete(c.modes.Operators, src.U.ID)
+	delete(c.modes.Voiced, src.U.ID)
 	delete(c.clients, src.U.ID)
-	delete(c.umodes, src.U.ID)
 	return nil
 }
 

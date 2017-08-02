@@ -1,120 +1,105 @@
 package irc
 
-import (
-	"bytes"
-	"sort"
-)
-
-type UserChanModes struct {
-	Op    bool
-	Voice bool
-}
-
-func (u UserChanModes) Prefix() string {
-	switch {
-	case u.Op:
-		return "@"
-	case u.Voice:
-		return "+"
-	}
-	return ""
-}
-
+// https://www.alien.net.au/irc/chanmodes.html
 const (
-	ChanModeOp    = "o"
-	ChanModeVoice = "v"
+	ChanModeBan            = "b"
+	ChanModeBanException   = "e"
+	ChanModeInviteOnly     = "i"
+	ChanModeInvitationMask = "I"
+	ChanModeKeylock        = "k"
+	ChanModeLimit          = "l"
+	ChanModeModerated      = "m"
+	ChanModeNoExternalMsgs = "n"
+	ChanModeOper           = "o"
+	ChanModePrivate        = "p"
+	ChanModeSecret         = "s"
+	ChanModeTopicLock      = "t"
+	ChanModeVoice          = "v"
 )
 
-type UserModes struct {
-	Away      bool
-	Invisible bool
-	Op        bool
-	LocalOp   bool
+var hasArg = map[string]struct{}{
+	"+b": struct{}{},
+	"-b": struct{}{},
+	"+e": struct{}{},
+	"-e": struct{}{},
+	"+I": struct{}{},
+	"-I": struct{}{},
+	"+k": struct{}{},
+	"+l": struct{}{},
+	"+o": struct{}{},
+	"-o": struct{}{},
+	"+v": struct{}{},
+	"-v": struct{}{},
 }
 
-const (
-	UserModeAway      = "a"
-	UserModeInvisible = "i"
-	UserModeOp        = "o"
-	UserModeLocalOp   = "O"
-)
-
-type ModeChanges struct {
-	Set   []string
-	Clear []string
-	valid map[string]bool // duplicate checks
+type ChanModes struct {
+	Bans           []string
+	BanExceptions  []string
+	InviteOnly     bool
+	InviationMasks []string
+	Keylock        string
+	Limit          int
+	Moderated      bool
+	NoExternalMsgs bool
+	Operators      map[UserID]bool
+	Private        bool
+	Secret         bool
+	TopicLock      bool
+	Voiced         map[UserID]bool
 }
 
-func NewModeChanges() *ModeChanges {
-	return &ModeChanges{
-		Set:   make([]string, 0),
-		Clear: make([]string, 0),
-		valid: make(map[string]bool),
+func NewChanModes() *ChanModes {
+	return &ChanModes{
+		Operators: make(map[UserID]bool),
+		Voiced:    make(map[UserID]bool),
 	}
 }
 
-func (m *ModeChanges) Normalize() *ModeChanges {
-	nset := make([]string, 0)
-	sort.Strings(m.Set)
-	for _, v := range m.Set {
-		_, ok := m.valid[v]
-		if ok {
-			nset = append(nset, v)
-		}
+func (c ChanModes) UserPrefix(id UserID) string {
+	prefix := ""
+	if _, yes := c.Voiced[id]; yes {
+		prefix = "+"
 	}
-	nclear := make([]string, 0)
-	sort.Strings(m.Clear)
-	for _, v := range m.Clear {
-		_, ok := m.valid[v]
-		if ok {
-			nclear = append(nclear, v)
-		}
+	if _, yes := c.Operators[id]; yes {
+		prefix = "@"
 	}
-	m.Set = nset
-	m.Clear = nclear
-	return m
+	return prefix
 }
 
-func (m ModeChanges) String() string {
-	var buf bytes.Buffer
-	if len(m.Set) > 0 {
-		buf.WriteString("+")
-		for _, c := range m.Set {
-			buf.WriteString(c)
-		}
-	}
-	if len(m.Clear) > 0 {
-		buf.WriteString("-")
-		for _, c := range m.Clear {
-			buf.WriteString(c)
-		}
-	}
-	return buf.String()
+type modeChange struct {
+	Action string
+	Mode   string
+	Param  string
 }
 
-func ParseModeChanges(param string) *ModeChanges {
-	action := "+"
-	mc := NewModeChanges()
-	for _, char := range param {
-		switch {
-		case char == '+':
-			action = "+"
-		case char == '-':
-			action = "-"
-		default:
-			mode := string(char)
-			if action == "+" {
-				mc.Set = append(mc.Set, string(char))
-			} else {
-				mc.Clear = append(mc.Clear, string(char))
-			}
-			_, exists := mc.valid[mode]
-			if !exists {
-				mc.valid[mode] = true
-			} else {
-				delete(mc.valid, mode)
+func parseModeChanges(params []string) []modeChange {
+	changes := make([]modeChange, 0)
+	imode := 0
+	iparam := 1
+	n := len(params)
+	for imode < len(params) {
+		modes := params[imode]
+		action := ""
+		for _, mode := range modes {
+			switch mode {
+			case '+':
+				action = "+"
+			case '-':
+				action = "-"
+			default:
+				mc := modeChange{}
+				mc.Action = action
+				mc.Mode = string(mode)
+				actionMode := action + string(mode)
+				if _, yes := hasArg[actionMode]; yes && iparam < n {
+					mc.Param = params[iparam]
+					iparam++
+				}
+				changes = append(changes, mc)
 			}
 		}
+		imode = iparam
+		iparam = imode + 1
 	}
-	return mc
+	return changes
 }

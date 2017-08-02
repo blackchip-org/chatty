@@ -18,7 +18,6 @@ type Client struct {
 	sendq      chan Message
 
 	chans map[string]*Chan
-	modes UserModes
 }
 
 func newClientUser(conn net.Conn, server *Server) *Client {

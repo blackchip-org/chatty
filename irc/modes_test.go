@@ -2,53 +2,67 @@ package irc
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
-func TestNormalize(t *testing.T) {
-	var tests = []struct {
-		name  string
-		set   []string
-		clear []string
-		have  *ModeChanges
-	}{
-		{
-			"standard",
-			[]string{"a", "b", "c"},
-			[]string{"d", "e", "f"},
-			ParseModeChanges("+abc-def").Normalize(),
-		},
-		{
-			"sorted",
-			[]string{"a", "b", "c"},
-			[]string{"d", "e", "f"},
-			ParseModeChanges("+bca-dfe").Normalize(),
-		},
-		{
-			"cancel",
-			[]string{"a", "b"},
-			[]string{"d", "e"},
-			ParseModeChanges("+abc-dec").Normalize(),
-		},
-		{
-			"cancel all",
-			[]string{},
-			[]string{},
-			ParseModeChanges("+abc-cba").Normalize(),
-		},
+func mc(action string, mode string, param string) modeChange {
+	return modeChange{
+		Action: action,
+		Mode:   mode,
+		Param:  param,
 	}
+}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			want := test.set
-			have := test.have.Set
+var parseModeTests = []struct {
+	modes   string
+	changes []modeChange
+}{
+	{"i", []modeChange{
+		mc("", "i", ""),
+	}},
+	{"+i", []modeChange{
+		mc("+", "i", ""),
+	}},
+	{"-i", []modeChange{
+		mc("-", "i", ""),
+	}},
+	{"+nt", []modeChange{
+		mc("+", "n", ""),
+		mc("+", "t", ""),
+	}},
+	{"+n +t", []modeChange{
+		mc("+", "n", ""),
+		mc("+", "t", ""),
+	}},
+	{"+n-ti", []modeChange{
+		mc("+", "n", ""),
+		mc("-", "t", ""),
+		mc("-", "i", ""),
+	}},
+	{"+nbI foo bar", []modeChange{
+		mc("+", "n", ""),
+		mc("+", "b", "foo"),
+		mc("+", "I", "bar"),
+	}},
+	{"+bnI foo bar", []modeChange{
+		mc("+", "b", "foo"),
+		mc("+", "n", ""),
+		mc("+", "I", "bar"),
+	}},
+	{"+b foo +b bar", []modeChange{
+		mc("+", "b", "foo"),
+		mc("+", "b", "bar"),
+	}},
+}
+
+func TestParseModes(t *testing.T) {
+	for _, test := range parseModeTests {
+		t.Run(test.modes, func(t *testing.T) {
+			want := test.changes
+			have := parseModeChanges(strings.Split(test.modes, " "))
 			if !reflect.DeepEqual(want, have) {
-				t.Errorf("\n for:  Set \n want: %v \n have: %v", want, have)
-			}
-			want = test.clear
-			have = test.have.Clear
-			if !reflect.DeepEqual(want, have) {
-				t.Errorf("\n for:  Clear \n want: %v \n have: %v", want, have)
+				t.Errorf("\n want: %v \n have: %v", want, have)
 			}
 		})
 	}

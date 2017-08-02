@@ -22,9 +22,6 @@ func TestMessageTooLong(t *testing.T) {
 	if c.Err() == nil {
 		t.Fatalf("expected network drop on message too long")
 	}
-	if !strings.Contains(c.Err().Error(), "reset by peer") {
-		t.Fatalf("unexpected error: %v", c.Err())
-	}
 }
 
 func TestMessageNotTooLong(t *testing.T) {

@@ -46,46 +46,6 @@ func (s *Service) Join(c *Client, name string) (*Chan, *Error) {
 	return ch, nil
 }
 
-func (s *Server) ModeUserSet(c *Client, mode string) (bool, *Error) {
-	switch mode {
-	case UserModeAway:
-		// The flag 'a' SHALL NOT be toggled by the user using the MODE
-		// command, instead use of the AWAY command is REQUIRED.
-		return false, nil
-	case UserModeInvisible:
-		changed := c.modes.Invisible != true
-		c.modes.Invisible = true
-		return changed, nil
-	case UserModeOp, UserModeLocalOp:
-		// If a user attempts to make themselves an operator using the "+o" or
-		// "+O" flag, the attempt SHOULD be ignored as users could bypass the
-		// authentication mechanisms of the OPER command.
-		return false, nil
-	}
-	return false, NewError(ErrUModeUnknownFlag, mode)
-}
-
-func (s *Service) ModeUserClear(c *Client, mode string) (bool, *Error) {
-	switch mode {
-	case UserModeAway:
-		// The flag 'a' SHALL NOT be toggled by the user using the MODE
-		// command, instead use of the AWAY command is REQUIRED.
-		return false, nil
-	case UserModeInvisible:
-		changed := c.modes.Invisible != false
-		c.modes.Invisible = false
-		return changed, nil
-	case UserModeOp, UserModeLocalOp:
-		// There is no restriction, however, on anyone `deopping' themselves
-		// (using "-o" or "-O").
-		changed := c.modes.Op != false
-		c.modes.Op = false
-		c.modes.LocalOp = false
-		return changed, nil
-	}
-	return false, NewError(ErrUModeUnknownFlag, mode)
-}
-
 func (s *Service) Nick(c *Client, nick string) *Error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
