@@ -47,8 +47,7 @@ const (
 	ErrNotOnChannel      = "442"
 	ErrNotRegistered     = "451"
 	ErrUModeUnknownFlag  = "501"
-
-	ErrNoOp = "000"
+	ErrUnknownMode       = "472"
 )
 
 var ErrorText = map[string]string{
@@ -63,6 +62,5 @@ var ErrorText = map[string]string{
 	ErrNotOnChannel:      "You're not on that channel",
 	ErrNotRegistered:     "You have not registered",
 	ErrUModeUnknownFlag:  "Unknown MODE flag",
-
-	ErrNoOp: "-",
+	ErrUnknownMode:       "is unknown mode char to me",
 }

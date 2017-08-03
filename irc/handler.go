@@ -49,7 +49,7 @@ func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 	case JoinCmd:
 		h.join(cmd.Params)
 	case ModeCmd:
-		//h.mode(cmd.Params)
+		h.mode(cmd.Params)
 	case NickCmd:
 		h.nick(cmd.Params)
 	case PartCmd:
@@ -111,25 +111,41 @@ func (h *DefaultHandler) join(params []string) {
 	h.c.Reply(RplEndOfNames, ch.Name())
 }
 
-/*
 func (h *DefaultHandler) mode(params []string) {
 	if len(params) == 0 {
 		h.c.SendError(NewError(ErrNeedMoreParams, ModeCmd))
 		return
 	}
-	if HasChanPrefix(params[0]) {
-		panic("not done")
-	} else {
-		nick := params[0]
-		if len(params) > 1 {
-			h.s.SetUserMode(nick, params)
-		} else {
-			h.s.
-		}
-		h.modeUser(params)
+	if !HasChanPrefix(params[0]) {
+		return
 	}
+
+	if len(params) < 2 {
+		h.c.SendError(NewError(ErrNeedMoreParams, ModeCmd))
+	}
+	chname, params := params[0], params[1:]
+	ch, err := h.s.Chan(chname)
+	if err != nil {
+		h.c.SendError(err)
+		return
+	}
+	requests := parseModeChanges(params)
+	cmds := ch.Modes(h.c)
+	for _, req := range requests {
+		var err *Error
+		switch req.Mode {
+		case ChanModeOper:
+			err = cmds.Oper(req.Param, req.Action)
+		default:
+			err = NewError(ErrUnknownMode, req.Mode, ch.name)
+		}
+		if err != nil {
+			h.c.SendError(err)
+			continue
+		}
+	}
+	cmds.Done()
 }
-*/
 
 func (h *DefaultHandler) nick(params []string) {
 	if len(params) != 1 {

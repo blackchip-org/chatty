@@ -20,7 +20,7 @@ type nickHistory struct {
 }
 
 type Nicks struct {
-	active map[string]*User
+	active map[string]User
 	prev   map[string]nickHistory
 	mutex  sync.RWMutex
 	clk    clock.C
@@ -29,7 +29,7 @@ type Nicks struct {
 
 func NewNicks() *Nicks {
 	n := &Nicks{
-		active: make(map[string]*User),
+		active: make(map[string]User),
 		prev:   make(map[string]nickHistory),
 		clk:    clock.Real{},
 	}
@@ -65,7 +65,7 @@ func (n *Nicks) Register(nick string, u *User) bool {
 		return false
 	}
 	delete(n.prev, nick)
-	n.active[nick] = u
+	n.active[nick] = *u
 	u.Nick = nick
 	return true
 }
@@ -74,6 +74,11 @@ func (n *Nicks) Unregister(u *User) {
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 	delete(n.active, u.Nick)
+}
+
+func (n *Nicks) Get(name string) (User, bool) {
+	u, ok := n.active[name]
+	return u, ok
 }
 
 func (n *Nicks) canRegister(nick string, u *User) bool {

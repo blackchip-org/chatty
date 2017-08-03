@@ -121,3 +121,76 @@ func (c *Chan) Members() []*Client {
 	}
 	return members
 }
+
+func (c *Chan) Modes(src *Client) ChanModeCmds {
+	return newChanModeCmds(c, src)
+}
+
+type ChanModeCmds struct {
+	c       *Chan
+	src     *Client
+	changes []modeChange
+}
+
+func newChanModeCmds(c *Chan, src *Client) ChanModeCmds {
+	cmd := ChanModeCmds{
+		c:       c,
+		src:     src,
+		changes: make([]modeChange, 0),
+	}
+	c.mutex.Lock()
+	return cmd
+}
+
+func (cmd ChanModeCmds) Oper(name string, action string) *Error {
+	c := cmd.c
+
+	// Is the action valid?
+	if action != "+" || action != "-" {
+		return nil
+	}
+	set := action == "+"
+
+	// Is the target user registered?
+	user, exists := c.nicks.Get(name)
+	if !exists {
+		return nil
+	}
+	// Is the target user in this channel?
+	target, yes := c.clients[user.ID]
+	if !yes {
+		return nil
+	}
+	// Is the user sending the command an operator or removing ops thier own ops?
+	_, srcOps := c.modes.Operators[cmd.src.U.ID]
+	sameUser := cmd.src.U.ID == target.U.ID
+	if !srcOps || !sameUser {
+		return nil
+	}
+	// Is a mode change needed?
+	_, targetOps := c.modes.Operators[target.U.ID]
+	if set == targetOps {
+		return nil
+	}
+
+	if set {
+		c.modes.Operators[target.U.ID] = true
+	} else {
+		delete(c.modes.Operators, target.U.ID)
+	}
+	cmd.changes = append(cmd.changes, modeChange{
+		Action: action,
+		Mode:   ChanModeOper,
+		Param:  name,
+	})
+	return nil
+}
+
+func (cmd ChanModeCmds) Done() {
+	if len(cmd.changes) > 0 {
+		for _, cli := range cmd.c.clients {
+			cli.Relay(cmd.src.U, ModeCmd, formatModeChanges(cmd.changes))
+		}
+	}
+	cmd.c.mutex.Unlock()
+}

@@ -28,6 +28,16 @@ func (s *Service) Origin() string {
 	return s.Name
 }
 
+func (s *Service) Chan(name string) (*Chan, *Error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	ch, exists := s.chans[name]
+	if !exists {
+		return nil, NewError(ErrNoSuchChannel)
+	}
+	return ch, nil
+}
+
 // ==== Commands
 
 func (s *Service) Join(c *Client, name string) (*Chan, *Error) {
