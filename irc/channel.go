@@ -9,6 +9,7 @@ type Chan struct {
 	name    string
 	topic   string
 	status  string
+	nicks   *Nicks
 	clients map[UserID]*Client
 	modes   *ChanModes
 	mutex   sync.RWMutex
@@ -26,9 +27,10 @@ func HasChanPrefix(chname string) bool {
 	return chname[0] == '#' || chname[0] == '&'
 }
 
-func NewChan(name string) *Chan {
+func NewChan(name string, nicks *Nicks) *Chan {
 	c := &Chan{
 		name:    name,
+		nicks:   nicks,
 		clients: make(map[UserID]*Client),
 		modes:   NewChanModes(),
 	}

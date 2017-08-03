@@ -35,7 +35,7 @@ func (s *Service) Join(c *Client, name string) (*Chan, *Error) {
 	defer s.mutex.Unlock()
 	ch, exists := s.chans[name]
 	if !exists {
-		ch = NewChan(name)
+		ch = NewChan(name, s.nicks)
 		s.chans[name] = ch
 	}
 	err := ch.Join(c)
