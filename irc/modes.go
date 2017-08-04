@@ -1,7 +1,5 @@
 package irc
 
-import "bytes"
-
 // https://www.alien.net.au/irc/chanmodes.html
 const (
 	ChanModeBan            = "b"
@@ -106,19 +104,13 @@ func parseModeChanges(params []string) []modeChange {
 	return changes
 }
 
-func formatModeChanges(changes []modeChange) string {
-	var buf bytes.Buffer
-	n := len(changes)
-	for i, change := range changes {
-		buf.WriteString(change.Action)
-		buf.WriteString(change.Mode)
+func formatModeChanges(changes []modeChange) []string {
+	params := make([]string, 0)
+	for _, change := range changes {
+		params = append(params, change.Action+change.Mode)
 		if change.Param != "" {
-			buf.WriteString(" ")
-			buf.WriteString(change.Param)
-		}
-		if i < n-1 {
-			buf.WriteString(" ")
+			params = append(params, change.Param)
 		}
 	}
-	return buf.String()
+	return params
 }

@@ -3,7 +3,7 @@ package irc
 import (
 	"testing"
 
-	"github.com/blackchip-org/chatty/irc/internal/clock"
+	"github.com/blackchip-org/chatty/internal/clock"
 )
 
 func TestRegisterNick(t *testing.T) {

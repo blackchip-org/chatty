@@ -3,7 +3,7 @@ package irc
 import (
 	"fmt"
 
-	"github.com/blackchip-org/chatty/irc/internal/counter"
+	"github.com/blackchip-org/chatty/internal/counter"
 )
 
 type UserID uint64

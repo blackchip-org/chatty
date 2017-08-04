@@ -4,11 +4,11 @@ import (
 	"testing"
 
 	"github.com/blackchip-org/chatty/irc"
-	"github.com/blackchip-org/chatty/irc/test"
+	"github.com/blackchip-org/chatty/tester"
 )
 
 func TestJoinChannel(t *testing.T) {
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 
 	c.Login("Batman", "batman 0 * :Bruce Wayne")
@@ -32,7 +32,7 @@ func TestJoinChannel(t *testing.T) {
 }
 
 func TestJoinNoChannel(t *testing.T) {
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 
 	c.LoginDefault()
@@ -45,7 +45,7 @@ func TestJoinNoChannel(t *testing.T) {
 }
 
 func TestMessage(t *testing.T) {
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 
 	c.Login("Batman", "batman 0 * :Bruce Wayne")
@@ -66,7 +66,7 @@ func TestMessage(t *testing.T) {
 }
 
 func TestPartChannel(t *testing.T) {
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 
 	c.Login("Batman", "batman 0 * :Bruce Wayne")
@@ -91,11 +91,10 @@ func TestPartChannel(t *testing.T) {
 	if want != have {
 		t.Fatalf("\n want: %v \n have: %v", want, have)
 	}
-
 }
 
 func TestQuit(t *testing.T) {
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 
 	c.Login("Batman", "batman 0 * :Bruce Wayne")

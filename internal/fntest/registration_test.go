@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"github.com/blackchip-org/chatty/irc"
-	"github.com/blackchip-org/chatty/irc/test"
+	"github.com/blackchip-org/chatty/tester"
 )
 
 func TestRegistration(t *testing.T) {
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 	c.Send("PASS")
 	c.Send("NICK Batman")
@@ -21,7 +21,7 @@ func TestRegistration(t *testing.T) {
 }
 
 func TestNickInUse(t *testing.T) {
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 	c.Send("NICK Batman")
 	c.Send("USER Batman 0 * :Bruce Wayne")
@@ -39,7 +39,7 @@ func TestNickInUse(t *testing.T) {
 }
 
 func TestNoNick(t *testing.T) {
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 	c.Send("NICK")
 	c.Send("USER Batman 0 * :Bruce Wayne")
@@ -52,7 +52,7 @@ func TestNoNick(t *testing.T) {
 }
 
 func TestNotRegistered(t *testing.T) {
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 	c.Send("JOIN #gotham")
 	have := c.Recv()
@@ -64,7 +64,7 @@ func TestNotRegistered(t *testing.T) {
 }
 
 func TestAlreadyRegisteredUser(t *testing.T) {
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 	c.LoginDefault()
 	c.Send("USER Batman 0 * :Bruce Wayne")
@@ -77,7 +77,7 @@ func TestAlreadyRegisteredUser(t *testing.T) {
 }
 
 func TestAlreadyRegisteredPass(t *testing.T) {
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 	c.LoginDefault()
 	c.Send("PASS swordfish")

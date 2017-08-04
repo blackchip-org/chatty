@@ -4,11 +4,11 @@ import (
 	"testing"
 
 	"github.com/blackchip-org/chatty/irc"
-	"github.com/blackchip-org/chatty/irc/test"
+	"github.com/blackchip-org/chatty/tester"
 )
 
 func TestPingNoParams(t *testing.T) {
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 	c.LoginDefault()
 	c.Send(irc.PingCmd)
@@ -20,7 +20,7 @@ func TestPingNoParams(t *testing.T) {
 }
 
 func TestPingWithParams(t *testing.T) {
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 	c.LoginDefault()
 	c.SendMessage(irc.PingCmd, "LAG1501295043420757")

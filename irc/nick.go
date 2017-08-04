@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blackchip-org/chatty/irc/internal/clock"
+	"github.com/blackchip-org/chatty/internal/clock"
 )
 
 const (

@@ -1,4 +1,4 @@
-package test
+package tester
 
 import (
 	"bufio"
@@ -22,6 +22,8 @@ var (
 func init() {
 	flag.BoolVar(&RealServer, "real-server", false, "run tests using a real server")
 }
+
+var errRecvTimeout = errors.New("recv timeout")
 
 type Server struct {
 	Actual    *irc.Server
@@ -174,26 +176,29 @@ func (c *Client) Recv() string {
 			retries++
 			if retries > 10 {
 				if c.err == nil {
-					c.err = errors.New("recv timeout")
+					c.err = errRecvTimeout
 				}
 				return "recv timeout"
 			}
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 		}
 	}
 }
 
-func (c *Client) Drain() string {
+func (c *Client) Drain() *Client {
 	if c.err != nil {
-		return ""
+		return c
 	}
-	lines := make([]string, 0)
+	c.t.Logf(" x  [%p]\tdraining", c)
 	for {
-		line := c.Recv()
-		if line == "" {
-			return strings.Join(lines, "\n")
+		_ = c.Recv()
+		if c.err != nil {
+			if c.err == errRecvTimeout {
+				c.err = nil
+			}
+			c.t.Logf(" x  [%p]\tdrained", c)
+			return c
 		}
-		lines = append(lines, line)
 	}
 }
 
@@ -234,14 +239,22 @@ func (c *Client) WaitFor(reply string) irc.Message {
 	return c.WaitForAny([]string{reply})
 }
 
-func (c *Client) Login(nick string, user string) {
+func (c *Client) Login(nick string, user string) *Client {
 	c.Send("NICK " + nick)
 	c.Send("USER " + user)
 	c.WaitForAny([]string{irc.RplEndOfMotd, irc.ErrNoMotd})
+	return c
 }
 
-func (c *Client) LoginDefault() {
+func (c *Client) LoginDefault() *Client {
 	c.Login("Batman", "Batman 0 * :Bruce Wayne")
+	return c
+}
+
+func (c *Client) Join(chname string) *Client {
+	c.Send("JOIN " + chname)
+	c.WaitFor(irc.RplEndOfNames)
+	return c
 }
 
 func (c *Client) Err() error {

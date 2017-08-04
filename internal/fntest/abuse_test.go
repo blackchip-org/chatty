@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/blackchip-org/chatty/irc"
-	"github.com/blackchip-org/chatty/irc/test"
+	"github.com/blackchip-org/chatty/tester"
 )
 
 func TestMessageTooLong(t *testing.T) {
-	if test.RealServer {
+	if tester.RealServer {
 		t.Skip("skipping test on real server")
 	}
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 
 	c.Login("Joker", "joker 0 * :Jack Nicholson")
@@ -25,10 +25,10 @@ func TestMessageTooLong(t *testing.T) {
 }
 
 func TestMessageNotTooLong(t *testing.T) {
-	if test.RealServer {
+	if tester.RealServer {
 		t.Skip("skipping test on real server")
 	}
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 
 	c.Login("Joker", "joker 0 * :Jack Nicholson")
@@ -44,10 +44,10 @@ func TestMessageNotTooLong(t *testing.T) {
 }
 
 func TestRegistrationDeadline(t *testing.T) {
-	if test.RealServer {
+	if tester.RealServer {
 		t.Skip("skipping test on real server")
 	}
-	s, c := test.NewServer(t)
+	s, c := tester.NewServer(t)
 	defer s.Quit()
 	c.LoginDefault()
 	c.Send("QUIT")

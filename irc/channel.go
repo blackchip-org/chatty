@@ -142,11 +142,11 @@ func newChanModeCmds(c *Chan, src *Client) ChanModeCmds {
 	return cmd
 }
 
-func (cmd ChanModeCmds) Oper(name string, action string) *Error {
+func (cmd *ChanModeCmds) Oper(name string, action string) *Error {
 	c := cmd.c
 
 	// Is the action valid?
-	if action != "+" || action != "-" {
+	if action != "+" && action != "-" {
 		return nil
 	}
 	set := action == "+"
@@ -156,17 +156,20 @@ func (cmd ChanModeCmds) Oper(name string, action string) *Error {
 	if !exists {
 		return nil
 	}
+
 	// Is the target user in this channel?
 	target, yes := c.clients[user.ID]
 	if !yes {
 		return nil
 	}
+
 	// Is the user sending the command an operator or removing ops thier own ops?
 	_, srcOps := c.modes.Operators[cmd.src.U.ID]
-	sameUser := cmd.src.U.ID == target.U.ID
-	if !srcOps || !sameUser {
+	sameUserDeop := cmd.src.U.ID == target.U.ID && !set
+	if !srcOps && !sameUserDeop {
 		return nil
 	}
+
 	// Is a mode change needed?
 	_, targetOps := c.modes.Operators[target.U.ID]
 	if set == targetOps {
@@ -189,7 +192,7 @@ func (cmd ChanModeCmds) Oper(name string, action string) *Error {
 func (cmd ChanModeCmds) Done() {
 	if len(cmd.changes) > 0 {
 		for _, cli := range cmd.c.clients {
-			cli.Relay(cmd.src.U, ModeCmd, formatModeChanges(cmd.changes))
+			cli.Relay(cmd.src.U, ModeCmd, formatModeChanges(cmd.changes)...)
 		}
 	}
 	cmd.c.mutex.Unlock()

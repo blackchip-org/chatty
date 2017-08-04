@@ -45,6 +45,10 @@ func DecodeMessage(line string) Message {
 	return m
 }
 
+var noColon = map[string]struct{}{
+	ModeCmd: struct{}{},
+}
+
 func (m Message) Encode() string {
 	fields := make([]string, 0)
 	if m.Prefix != "" {
@@ -60,7 +64,9 @@ func (m Message) Encode() string {
 	}
 	for i, param := range m.Params {
 		// FIXME: Does the final parameter always need a colon?
-		if i == len(m.Params)-1 /*&& strings.Contains(param, " ")*/ {
+		// Probably not, but is this the best?
+		_, nc := noColon[m.Cmd]
+		if i == len(m.Params)-1 && !nc {
 			param = ":" + param
 		}
 		fields = append(fields, param)
