@@ -17,7 +17,7 @@ func TestModeOper(t *testing.T) {
 	c.Drain()
 	c.Send("MODE #gotham +o Robin")
 	have := c2.Recv()
-	want := ":Batman!~batman@localhost MODE +o Robin"
+	want := ":Batman!~batman@localhost MODE #gotham +o Robin"
 	if want != have {
 		t.Fatalf("\n want: %v \n have: %v", want, have)
 	}

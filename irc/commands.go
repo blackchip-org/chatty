@@ -31,7 +31,8 @@ const (
 )
 
 var RplText = map[string]string{
-	RplNoTopic: "No topic is set",
+	RplEndOfNames: "End of NAMES list.",
+	RplNoTopic:    "No topic is set",
 }
 
 const (

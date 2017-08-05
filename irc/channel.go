@@ -192,7 +192,8 @@ func (cmd *ChanModeCmds) Oper(name string, action string) *Error {
 func (cmd ChanModeCmds) Done() {
 	if len(cmd.changes) > 0 {
 		for _, cli := range cmd.c.clients {
-			cli.Relay(cmd.src.U, ModeCmd, formatModeChanges(cmd.changes)...)
+			params := append([]string{cmd.c.name}, formatModeChanges(cmd.changes)...)
+			cli.Relay(cmd.src.U, ModeCmd, params...)
 		}
 	}
 	cmd.c.mutex.Unlock()
