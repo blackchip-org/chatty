@@ -14,7 +14,7 @@
 
 docker run -p 6667:6667 -d ircd 
 sudo tcpflow -c -i lo0 port 6667
-go test ./irc/internal/fntest --args --real-server
+go test ./internal/fntest --args --real-server
 
 :irc.localhost 004 Batman irc.localhost 2.11.2p3 aoOirw abeiIklmnoOpqrRstv
 :irc.localhost 005 Batman RFC2812 PREFIX=(ov)@+ CHANTYPES=#&!+ MODES=3 CHANLIMIT=#&!+:21 NICKLEN=15 TOPICLEN=255 KICKLEN=255 MAXLIST=beIR:64 CHANNELLEN=50 IDCHAN=!:5 CHANMODES=beIR,k,l,imnpstaqr :are supported by this server

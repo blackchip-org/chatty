@@ -55,7 +55,7 @@ func TestNotRegistered(t *testing.T) {
 	s, c := tester.NewServer(t)
 	defer s.Quit()
 	c.Send("JOIN #gotham")
-	have := c.Recv()
+	have := c.WaitFor(irc.ErrNotRegistered).Encode()
 
 	want := ":irc.localhost 451 * :You have not registered"
 	if want != have {
@@ -68,8 +68,7 @@ func TestAlreadyRegisteredUser(t *testing.T) {
 	defer s.Quit()
 	c.LoginDefault()
 	c.Send("USER Batman 0 * :Bruce Wayne")
-	have := c.Recv()
-
+	have := c.WaitFor(irc.ErrAlreadyRegistered).Encode()
 	want := ":irc.localhost 462 Batman :Unauthorized command (already registered)"
 	if want != have {
 		t.Fatalf("\n want: %v \n have: %v \n err:  %v", want, have, c.Err())

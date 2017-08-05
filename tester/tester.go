@@ -180,7 +180,11 @@ func (c *Client) Recv() string {
 				}
 				return "recv timeout"
 			}
-			time.Sleep(10 * time.Millisecond)
+			if RealServer {
+				time.Sleep(100 * time.Millisecond)
+			} else {
+				time.Sleep(10 * time.Millisecond)
+			}
 		}
 	}
 }
