@@ -52,7 +52,7 @@ func (c *Chan) Status() string {
 	return "="
 }
 
-func (c *Chan) Nicks() []string {
+func (c *Chan) Names() []string {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 	nicks := make([]string, 0, len(c.clients))
@@ -163,10 +163,8 @@ func (cmd *ChanModeCmds) Oper(name string, action string) *Error {
 		return nil
 	}
 
-	// Is the user sending the command an operator or removing ops thier own ops?
-	_, srcOps := c.modes.Operators[cmd.src.U.ID]
-	sameUserDeop := cmd.src.U.ID == target.U.ID && !set
-	if !srcOps && !sameUserDeop {
+	// Is the user sending the command an operator?
+	if !c.modes.Operators[cmd.src.U.ID] {
 		return nil
 	}
 

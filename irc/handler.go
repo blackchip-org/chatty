@@ -50,6 +50,8 @@ func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 		h.join(cmd.Params)
 	case ModeCmd:
 		h.mode(cmd.Params)
+	case NamesCmd:
+		h.names(cmd.Params)
 	case NickCmd:
 		h.nick(cmd.Params)
 	case PartCmd:
@@ -106,9 +108,7 @@ func (h *DefaultHandler) join(params []string) {
 	} else {
 		h.c.Reply(RplTopic, topic)
 	}
-	nicks := strings.Join(ch.Nicks(), " ")
-	h.c.Reply(RplNameReply, ch.Status(), ch.Name(), nicks)
-	h.c.Reply(RplEndOfNames, ch.Name())
+	h.names([]string{name})
 }
 
 func (h *DefaultHandler) mode(params []string) {
@@ -145,6 +145,22 @@ func (h *DefaultHandler) mode(params []string) {
 		}
 	}
 	cmds.Done()
+}
+
+func (h *DefaultHandler) names(params []string) {
+	if len(params) == 0 {
+		h.c.Send(RplEndOfNames)
+		return
+	}
+	chname := params[0]
+	ch, err := h.s.Chan(chname)
+	if err != nil {
+		h.c.SendError(err)
+		return
+	}
+	nicks := strings.Join(ch.Names(), " ")
+	h.c.Reply(RplNameReply, ch.Status(), ch.Name(), nicks)
+	h.c.Reply(RplEndOfNames, ch.Name())
 }
 
 func (h *DefaultHandler) nick(params []string) {

@@ -7,6 +7,7 @@ const (
 	CapEndCmd  = "END"
 	JoinCmd    = "JOIN"
 	ModeCmd    = "MODE"
+	NamesCmd   = "NAMES"
 	NickCmd    = "NICK"
 	PartCmd    = "PART"
 	PassCmd    = "PASS"

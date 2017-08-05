@@ -12,6 +12,9 @@
 - http://www.irc.org/tech_docs/ircnet/faq.html
 - http://www.irc.org/tech_docs/005.html
 
+NICK root
+USER root 0 * :Mr. Root 
+
 docker run -p 6667:6667 -d ircd 
 sudo tcpflow -c -i lo0 port 6667
 go test ./internal/fntest --args --real-server
