@@ -91,9 +91,7 @@ func (c *Chan) Part(src *Client, reason string) *Error {
 	for _, cli := range c.clients {
 		cli.Relay(src.U, PartCmd, c.name, reason)
 	}
-	delete(c.modes.Operators, src.U.ID)
-	delete(c.modes.Voiced, src.U.ID)
-	delete(c.clients, src.U.ID)
+	c.remove(src)
 	return nil
 }
 
@@ -124,6 +122,18 @@ func (c *Chan) Members() []*Client {
 
 func (c *Chan) Modes(src *Client) ChanModeCmds {
 	return newChanModeCmds(c, src)
+}
+
+func (c *Chan) Quit(src *Client) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.remove(src)
+}
+
+func (c *Chan) remove(src *Client) {
+	delete(c.modes.Operators, src.U.ID)
+	delete(c.modes.Voiced, src.U.ID)
+	delete(c.clients, src.U.ID)
 }
 
 type ChanModeCmds struct {

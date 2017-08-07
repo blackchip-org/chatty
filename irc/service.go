@@ -105,6 +105,7 @@ func (s *Service) Quit(src *Client, reason string) {
 			}
 			notify[m.U.ID] = m
 		}
+		ch.Quit(src)
 	}
 	for _, cli := range notify {
 		cli.Relay(src.U, QuitCmd, reason)

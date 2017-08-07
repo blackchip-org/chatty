@@ -91,6 +91,13 @@ func TestPartChannel(t *testing.T) {
 	if want != have {
 		t.Fatalf("\n want: %v \n have: %v", want, have)
 	}
+
+	c2.Send("NAMES #gotham")
+	have = c2.Recv()
+	want = ":irc.localhost 353 Robin = #gotham :Robin"
+	if want != have {
+		t.Fatalf("\n want: %v \n have: %v", want, have)
+	}
 }
 
 func TestQuit(t *testing.T) {
@@ -113,5 +120,12 @@ func TestQuit(t *testing.T) {
 
 	if want1 != have && want2 != have {
 		t.Fatalf("\n want: %v \n or  : %v \n have: %v", want1, want2, have)
+	}
+
+	c2.Send("NAMES #gotham")
+	have = c2.Recv()
+	want := ":irc.localhost 353 Robin = #gotham :Robin"
+	if want != have {
+		t.Fatalf("\n want: %v \n have: %v", want, have)
 	}
 }
