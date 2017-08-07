@@ -175,7 +175,7 @@ func (cmd *ChanModeCmds) Oper(name string, action string) *Error {
 
 	// Is the user sending the command an operator?
 	if !c.modes.Operators[cmd.src.U.ID] {
-		return nil
+		return NewError(ErrChanOpPrivsNeeded, c.name)
 	}
 
 	// Is a mode change needed?

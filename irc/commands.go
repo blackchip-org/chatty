@@ -39,6 +39,7 @@ var RplText = map[string]string{
 const (
 	ErrAlreadyRegistered = "462"
 	ErrCannotSendToChan  = "404"
+	ErrChanOpPrivsNeeded = "482"
 	ErrInvalidCapCmd     = "410"
 	ErrNeedMoreParams    = "461"
 	ErrNickNameInUse     = "433"
@@ -55,6 +56,7 @@ const (
 var ErrorText = map[string]string{
 	ErrAlreadyRegistered: "Unauthorized command (already registered)",
 	ErrCannotSendToChan:  "Cannot send to channel",
+	ErrChanOpPrivsNeeded: "You're not channel operator",
 	ErrInvalidCapCmd:     "Invalid CAP command",
 	ErrNeedMoreParams:    "Not enough parameters",
 	ErrNickNameInUse:     "Nickname is already in use",

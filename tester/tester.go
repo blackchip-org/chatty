@@ -35,12 +35,13 @@ type Server struct {
 }
 
 type Client struct {
-	conn  net.Conn
-	recvq chan string
-	w     *bufio.Writer
-	debug bool
-	err   error
-	t     *testing.T
+	conn   net.Conn
+	recvq  chan string
+	w      *bufio.Writer
+	debug  bool
+	err    error
+	t      *testing.T
+	server *Server
 }
 
 func NewServer(t *testing.T) (*Server, *Client) {
@@ -79,7 +80,7 @@ func NewServer(t *testing.T) (*Server, *Client) {
 		}()
 	}
 	if RealServer {
-		ts.connDelay = 1 * time.Second
+		ts.connDelay = 1000 * time.Millisecond
 	}
 	tc := ts.NewClient()
 	return ts, tc
@@ -87,8 +88,9 @@ func NewServer(t *testing.T) (*Server, *Client) {
 
 func (s *Server) NewClient() *Client {
 	tc := &Client{
-		recvq: make(chan string, 1024),
-		t:     s.t,
+		recvq:  make(chan string, 1024),
+		t:      s.t,
+		server: s,
 	}
 	s.clients = append(s.clients, tc)
 	if s.err != nil {

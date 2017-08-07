@@ -111,4 +111,5 @@ func (s *Service) Quit(src *Client, reason string) {
 		cli.Relay(src.U, QuitCmd, reason)
 	}
 	src.Quit()
+	s.nicks.Unregister(src.U)
 }

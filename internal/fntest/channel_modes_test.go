@@ -118,6 +118,8 @@ func TestModeOperNotOper(t *testing.T) {
 
 	c3.Drain()
 	c3.Send("MODE #gotham +o Robin")
+	c3.WaitFor(irc.ErrChanOpPrivsNeeded)
+
 	c3.Send("NAMES #gotham")
 	have := AnyOf(c3.Recv(), "@Batman", "Robin", "Joker")
 	want := ":irc.localhost 353 X = #gotham :X X X"
