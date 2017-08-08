@@ -117,7 +117,11 @@ func (s *Server) NewClient() *Client {
 func (s *Server) Quit() {
 	for _, client := range s.clients {
 		if client.conn != nil {
+			client.Drain()
 			client.Send("QUIT")
+			if RealServer {
+				client.WaitFor("ERROR")
+			}
 			client.conn.Close()
 		}
 	}
@@ -176,7 +180,7 @@ func (c *Client) Recv() string {
 			return line
 		default:
 			retries++
-			if retries > 10 {
+			if retries > 20 {
 				if c.err == nil {
 					c.err = errRecvTimeout
 				}
@@ -246,6 +250,9 @@ func (c *Client) WaitFor(reply string) irc.Message {
 }
 
 func (c *Client) Login(nick string, user string) *Client {
+	if RealServer {
+		c.WaitFor("020")
+	}
 	c.Send("NICK " + nick)
 	c.Send("USER " + user)
 	c.WaitForAny([]string{irc.RplEndOfMotd, irc.ErrNoMotd})

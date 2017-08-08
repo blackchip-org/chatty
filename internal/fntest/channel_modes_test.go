@@ -37,8 +37,8 @@ func TestModeOper(t *testing.T) {
 
 func TestModeDeOper(t *testing.T) {
 	s, c := tester.NewServer(t)
-	defer s.Quit()
 	c2 := s.NewClient()
+	defer s.Quit()
 
 	c.Login("Robin", "robin 0 * :Boy Wonder").Join("#gotham")
 	c2.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
