@@ -7,10 +7,11 @@ import (
 const MessageMaxLen = 512
 
 type Message struct {
-	Prefix string
-	Cmd    string
-	Target string
-	Params []string
+	Prefix   string
+	Cmd      string
+	Target   string
+	Params   []string
+	NoSpaces bool
 }
 
 func NewMessage(cmd string, params ...string) Message {
@@ -45,10 +46,6 @@ func DecodeMessage(line string) Message {
 	return m
 }
 
-var noColon = map[string]struct{}{
-	ModeCmd: struct{}{},
-}
-
 func (m Message) Encode() string {
 	fields := make([]string, 0)
 	if m.Prefix != "" {
@@ -63,10 +60,7 @@ func (m Message) Encode() string {
 		fields = append(fields, m.Target)
 	}
 	for i, param := range m.Params {
-		// FIXME: Does the final parameter always need a colon?
-		// Probably not, but is this the best?
-		_, nc := noColon[m.Cmd]
-		if i == len(m.Params)-1 && !nc {
+		if i == len(m.Params)-1 && !m.NoSpaces {
 			param = ":" + param
 		}
 		fields = append(fields, param)

@@ -120,7 +120,7 @@ func (c *Chan) Members() []*Client {
 	return members
 }
 
-func (c *Chan) Modes(src *Client) ChanModeCmds {
+func (c *Chan) Mode(src *Client) ChanModeCmds {
 	return newChanModeCmds(c, src)
 }
 
@@ -152,7 +152,7 @@ func newChanModeCmds(c *Chan, src *Client) ChanModeCmds {
 	return cmd
 }
 
-func (cmd *ChanModeCmds) Oper(name string, action string) *Error {
+func (cmd *ChanModeCmds) Oper(action string, name string) *Error {
 	c := cmd.c
 
 	// Is the action valid?
@@ -201,7 +201,13 @@ func (cmd ChanModeCmds) Done() {
 	if len(cmd.changes) > 0 {
 		for _, cli := range cmd.c.clients {
 			params := append([]string{cmd.c.name}, formatModeChanges(cmd.changes)...)
-			cli.Relay(cmd.src.U, ModeCmd, params...)
+			m := Message{
+				Prefix:   cmd.src.U.Origin(),
+				Cmd:      ModeCmd,
+				Params:   params,
+				NoSpaces: true,
+			}
+			cli.SendMessage(m)
 		}
 	}
 	cmd.c.mutex.Unlock()

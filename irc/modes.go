@@ -1,6 +1,22 @@
 package irc
 
 // https://www.alien.net.au/irc/chanmodes.html
+type ChanModes struct {
+	Bans           []string
+	BanExceptions  []string
+	InviteOnly     bool
+	InviationMasks []string
+	Keylock        string
+	Limit          int
+	Moderated      bool
+	NoExternalMsgs bool
+	Operators      map[UserID]bool
+	Private        bool
+	Secret         bool
+	TopicLock      bool
+	Voiced         map[UserID]bool
+}
+
 const (
 	ChanModeBan            = "b"
 	ChanModeBanException   = "e"
@@ -17,36 +33,31 @@ const (
 	ChanModeVoice          = "v"
 )
 
-var hasArg = map[string]struct{}{
-	"+b": struct{}{},
-	"-b": struct{}{},
-	"+e": struct{}{},
-	"-e": struct{}{},
-	"+I": struct{}{},
-	"-I": struct{}{},
-	"+k": struct{}{},
-	"+l": struct{}{},
-	"+o": struct{}{},
-	"-o": struct{}{},
-	"+v": struct{}{},
-	"-v": struct{}{},
+var chanModesWithArgs = map[string]bool{
+	"+b": true, "-b": true,
+	"+e": true, "-e": true,
+	"+I": true, "-I": true,
+	"+k": true,
+	"+l": true,
+	"+o": true, "-o": true,
+	"+v": true, "-v": true,
 }
 
-type ChanModes struct {
-	Bans           []string
-	BanExceptions  []string
-	InviteOnly     bool
-	InviationMasks []string
-	Keylock        string
-	Limit          int
-	Moderated      bool
-	NoExternalMsgs bool
-	Operators      map[UserID]bool
-	Private        bool
-	Secret         bool
-	TopicLock      bool
-	Voiced         map[UserID]bool
+type UserModes struct {
+	Away           bool
+	Invisible      bool
+	GlobalOperator bool
+	LocalOperator  bool
 }
+
+const (
+	UserModeAway           = "a"
+	UserModeInvisible      = "i"
+	UserModeGlobalOperator = "o"
+	UserModeLocalOperator  = "O"
+)
+
+var userModesWithArgs = map[string]bool{}
 
 func NewChanModes() *ChanModes {
 	return &ChanModes{
@@ -72,7 +83,15 @@ type modeChange struct {
 	Param  string
 }
 
-func parseModeChanges(params []string) []modeChange {
+func parseChanModeChanges(params []string) []modeChange {
+	return parseModeChanges(params, chanModesWithArgs)
+}
+
+func parseUserModeChanges(params []string) []modeChange {
+	return parseModeChanges(params, userModesWithArgs)
+}
+
+func parseModeChanges(params []string, hasArg map[string]bool) []modeChange {
 	changes := make([]modeChange, 0)
 	imode := 0
 	iparam := 1

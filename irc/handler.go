@@ -116,12 +116,17 @@ func (h *DefaultHandler) mode(params []string) {
 		h.c.SendError(NewError(ErrNeedMoreParams, ModeCmd))
 		return
 	}
-	if !HasChanPrefix(params[0]) {
+	if HasChanPrefix(params[0]) {
+		h.modeChan(params)
 		return
 	}
+	h.modeUser(params)
+}
 
+func (h *DefaultHandler) modeChan(params []string) {
 	if len(params) < 2 {
 		h.c.SendError(NewError(ErrNeedMoreParams, ModeCmd))
+		return
 	}
 	chname, params := params[0], params[1:]
 	ch, err := h.s.Chan(chname)
@@ -129,15 +134,42 @@ func (h *DefaultHandler) mode(params []string) {
 		h.c.SendError(err)
 		return
 	}
-	requests := parseModeChanges(params)
-	cmds := ch.Modes(h.c)
+	requests := parseChanModeChanges(params)
+	cmds := ch.Mode(h.c)
 	for _, req := range requests {
 		var err *Error
 		switch req.Mode {
 		case ChanModeOper:
-			err = cmds.Oper(req.Param, req.Action)
+			err = cmds.Oper(req.Action, req.Param)
 		default:
 			err = NewError(ErrUnknownMode, req.Mode, ch.name)
+		}
+		if err != nil {
+			h.c.SendError(err)
+			continue
+		}
+	}
+	cmds.Done()
+}
+
+func (h *DefaultHandler) modeUser(params []string) {
+	if len(params) < 2 {
+		h.c.SendError(NewError(ErrNeedMoreParams, ModeCmd))
+		return
+	}
+	nick := params[0]
+	if nick != h.c.U.Nick {
+		h.c.SendError(NewError(ErrUsersDontMatch))
+	}
+	requests := parseUserModeChanges(params[1:])
+	cmds := h.s.Mode(h.c)
+	for _, req := range requests {
+		var err *Error
+		switch req.Mode {
+		case UserModeInvisible:
+			err = cmds.Invisible(req.Action)
+		default:
+			err = NewError(ErrUnknownMode, req.Mode)
 		}
 		if err != nil {
 			h.c.SendError(err)
@@ -239,6 +271,7 @@ func (h *DefaultHandler) user(params []string) {
 func (h *DefaultHandler) checkHandshake() error {
 	if h.c.U.Nick != "" && h.c.U.Name != "" {
 		h.c.SetRegistered()
+		h.s.Login(h.c)
 		h.welcome()
 	}
 	return nil

@@ -37,7 +37,7 @@ func newClientUser(conn net.Conn, server *Server) *Client {
 
 func (c *Client) Send(cmd string, params ...string) *Client {
 	m := Message{Prefix: c.ServerName, Cmd: cmd, Params: params}
-	c.send(m)
+	c.SendMessage(m)
 	return c
 }
 
@@ -47,13 +47,13 @@ func (c *Client) Reply(cmd string, params ...string) *Client {
 		params = append(params, text)
 	}
 	m := Message{Prefix: c.ServerName, Target: c.U.Nick, Cmd: cmd, Params: params}
-	c.send(m)
+	c.SendMessage(m)
 	return c
 }
 
 func (c *Client) Relay(o Origin, cmd string, params ...string) *Client {
 	m := Message{Prefix: o.Origin(), Cmd: cmd, Params: params}
-	c.send(m)
+	c.SendMessage(m)
 	return c
 }
 
@@ -63,7 +63,7 @@ func (c *Client) SendError(err *Error) *Client {
 		nick = c.U.Nick
 	}
 	m := Message{Prefix: c.ServerName, Target: nick, Cmd: err.Numeric, Params: err.Params}
-	c.send(m)
+	c.SendMessage(m)
 	return c
 }
 
@@ -72,7 +72,7 @@ func (c *Client) SetRegistered() {
 	c.conn.SetDeadline(time.Time{})
 }
 
-func (c *Client) send(m Message) {
+func (c *Client) SendMessage(m Message) {
 	if c.err != nil {
 		return
 	}

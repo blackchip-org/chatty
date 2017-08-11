@@ -12,6 +12,7 @@ type Service struct {
 	mutex   sync.RWMutex
 	chans   map[string]*Chan
 	nicks   *Nicks
+	modes   map[UserID]*UserModes
 }
 
 func newService(name string) *Service {
@@ -20,6 +21,7 @@ func newService(name string) *Service {
 		Started: time.Now(),
 		chans:   make(map[string]*Chan),
 		nicks:   NewNicks(),
+		modes:   make(map[UserID]*UserModes),
 	}
 	return s
 }
@@ -38,6 +40,12 @@ func (s *Service) Chan(name string) (*Chan, *Error) {
 	return ch, nil
 }
 
+func (s *Service) Login(c *Client) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.modes[c.U.ID] = &UserModes{}
+}
+
 // ==== Commands
 
 func (s *Service) Join(c *Client, name string) (*Chan, *Error) {
@@ -54,6 +62,10 @@ func (s *Service) Join(c *Client, name string) (*Chan, *Error) {
 	}
 	c.chans[name] = ch
 	return ch, nil
+}
+
+func (s *Service) Mode(src *Client) *UserModeCmds {
+	return newUserModeCmds(s, src)
 }
 
 func (s *Service) Nick(c *Client, nick string) *Error {
@@ -94,8 +106,8 @@ func (s *Service) PrivMsg(src *Client, dest string, text string) *Error {
 }
 
 func (s *Service) Quit(src *Client, reason string) {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	notify := make(map[UserID]*Client)
 	for _, ch := range src.chans {
 		members := ch.Members()
@@ -112,4 +124,59 @@ func (s *Service) Quit(src *Client, reason string) {
 	}
 	src.Quit()
 	s.nicks.Unregister(src.U)
+	delete(s.modes, src.U.ID)
+}
+
+// ===== User Modes
+
+type UserModeCmds struct {
+	s       *Service
+	src     *Client
+	changes []modeChange
+}
+
+func newUserModeCmds(s *Service, src *Client) *UserModeCmds {
+	cmd := &UserModeCmds{
+		s:       s,
+		src:     src,
+		changes: make([]modeChange, 0),
+	}
+	s.mutex.Lock()
+	return cmd
+}
+
+func (cmd *UserModeCmds) Invisible(action string) *Error {
+	s := cmd.s
+
+	// Is the action valid?
+	if action != "+" && action != "-" {
+		return nil
+	}
+	set := action == "+"
+
+	// Is a mode change needed?
+	modes := s.modes[cmd.src.U.ID]
+	prev := s.modes[cmd.src.U.ID].Invisible
+	if set == prev {
+		return nil
+	}
+	modes.Invisible = set
+	cmd.changes = append(cmd.changes, modeChange{
+		Action: action,
+		Mode:   UserModeInvisible,
+	})
+	return nil
+}
+
+func (cmd UserModeCmds) Done() {
+	if len(cmd.changes) > 0 {
+		params := append([]string{cmd.src.U.Nick}, formatModeChanges(cmd.changes)...)
+		m := Message{
+			Prefix: cmd.src.U.Nick,
+			Cmd:    ModeCmd,
+			Params: params,
+		}
+		cmd.src.SendMessage(m)
+	}
+	cmd.s.mutex.Unlock()
 }

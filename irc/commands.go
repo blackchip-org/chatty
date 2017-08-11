@@ -51,6 +51,7 @@ const (
 	ErrNotRegistered     = "451"
 	ErrUModeUnknownFlag  = "501"
 	ErrUnknownMode       = "472"
+	ErrUsersDontMatch    = "502"
 )
 
 var ErrorText = map[string]string{
@@ -67,4 +68,5 @@ var ErrorText = map[string]string{
 	ErrNotRegistered:     "You have not registered",
 	ErrUModeUnknownFlag:  "Unknown MODE flag",
 	ErrUnknownMode:       "is unknown mode char to me",
+	ErrUsersDontMatch:    "Cannot change mode for other users",
 }

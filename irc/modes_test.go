@@ -56,11 +56,11 @@ var parseModeTests = []struct {
 	}},
 }
 
-func TestParseModes(t *testing.T) {
+func TestChanParseModes(t *testing.T) {
 	for _, test := range parseModeTests {
 		t.Run(test.modes, func(t *testing.T) {
 			want := test.changes
-			have := parseModeChanges(strings.Split(test.modes, " "))
+			have := parseChanModeChanges(strings.Split(test.modes, " "))
 			if !reflect.DeepEqual(want, have) {
 				t.Errorf("\n want: %v \n have: %v", want, have)
 			}
