@@ -84,6 +84,102 @@ func TestModeKeylockNoModeChange(t *testing.T) {
 	}
 }
 
+// ===== Limit
+
+func TestModeLimitFail(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c.Send("MODE #gotham +l 1")
+
+	c2 := s.NewClient()
+	c2.Login("Robin", "robin 0 * :Boy Wonder")
+	c2.Send("JOIN #gotham")
+	c2.WaitFor(irc.ErrChannelIsFull)
+	if c2.Err() != nil {
+		t.Errorf("unexpected error: %v", c2.Err())
+	}
+}
+
+func TestModeLimitSuccess(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c.Send("MODE #gotham +l 1")
+
+	c2 := s.NewClient()
+	c2.Login("Robin", "robin 0 * :Boy Wonder")
+	c2.Send("JOIN #gotham")
+	c2.WaitFor(irc.ErrChannelIsFull)
+
+	c.Drain()
+	c.Send("MODE #gotham -l")
+
+	c2.Drain()
+	c2.Send("JOIN #gotham")
+	c2.WaitFor(irc.RplEndOfNames)
+	if c2.Err() != nil {
+		t.Errorf("unexpected error: %v", c2.Err())
+	}
+}
+
+func TestModeLimitNegative(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c.Send("MODE #gotham +l -123")
+	c.Send("PING hello")
+	c.WaitFor(irc.PongCmd)
+	if c.Err() != nil {
+		t.Errorf("\n want: no error \n have: %v", c.Err())
+	}
+}
+
+func TestModeLimitNoAction(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c.Send("MODE #gotham l")
+	c.Send("PING hello")
+	c.WaitFor(irc.PongCmd)
+	if c.Err() != nil {
+		t.Errorf("\n want: no error \n have: %v", c.Err())
+	}
+}
+
+func TestModeLimitNotOper(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+	c2 := s.NewClient()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c2.Login("Joker", "joker 0 * :The Joker").Join("#gotham")
+
+	c2.Send("MODE #gotham +l 10")
+	c.Send("PING hello")
+	c.WaitFor(irc.PongCmd)
+	if c.Err() != nil {
+		t.Errorf("\n want: no error \n have: %v", c.Err())
+	}
+}
+
+func TestModeLimitNoModeChange(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c.Send("MODE #gotham -l")
+	c.Send("PING hello")
+	c.WaitFor(irc.PongCmd)
+	if c.Err() != nil {
+		t.Errorf("\n want: no error \n have: %v", c.Err())
+	}
+}
+
 // ==== Oper
 
 func TestModeOper(t *testing.T) {

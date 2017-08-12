@@ -40,6 +40,7 @@ const (
 	ErrAlreadyRegistered = "462"
 	ErrBadChannelKey     = "475"
 	ErrCannotSendToChan  = "404"
+	ErrChannelIsFull     = "471"
 	ErrChanOpPrivsNeeded = "482"
 	ErrInvalidCapCmd     = "410"
 	ErrNeedMoreParams    = "461"
@@ -59,6 +60,7 @@ var ErrorText = map[string]string{
 	ErrAlreadyRegistered: "Unauthorized command (already registered)",
 	ErrBadChannelKey:     "Cannot join channel (+k)",
 	ErrCannotSendToChan:  "Cannot send to channel",
+	ErrChannelIsFull:     "Cannot join channel (+l)",
 	ErrChanOpPrivsNeeded: "You're not channel operator",
 	ErrInvalidCapCmd:     "Invalid CAP command",
 	ErrNeedMoreParams:    "Not enough parameters",

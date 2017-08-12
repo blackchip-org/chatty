@@ -114,6 +114,7 @@ func (s *Server) Quit() {
 	for _, client := range s.clients {
 		if client.conn != nil {
 			client.drainNoWait()
+			client.err = nil
 			client.Send("QUIT")
 			if RealServer {
 				client.WaitFor("ERROR")
@@ -148,9 +149,9 @@ func (c *Client) Send(line string) {
 	}
 	// When testing against a real server, it won't let us flood it and needs to be throttled.
 	// https://tools.ietf.org/html/rfc2813#section-5.8
-	if RealServer && c.nsent > 10 {
+	if RealServer && c.nsent >= 10 {
 		c.t.Logf(" z  [%p]\tthrottle", c)
-		time.Sleep(2 * time.Second)
+		time.Sleep(2500 * time.Millisecond)
 	}
 	c.t.Logf(" -> [%p] %v", c, line)
 	_, err := c.w.WriteString(line + "\r\n")
@@ -177,7 +178,7 @@ func (c *Client) Recv() string {
 
 	timeout := 300 * time.Millisecond
 	if RealServer {
-		timeout = 5 * time.Second
+		timeout = 4500 * time.Millisecond
 	}
 
 	timer := time.NewTimer(timeout)
@@ -210,17 +211,12 @@ func (c *Client) Drain() *Client {
 }
 
 func (c *Client) drainNoWait() *Client {
-	if c.err != nil {
-		return c
-	}
-	c.t.Logf(" x  [%p]\tdraining (no wait)", c)
 	for {
 		select {
 		case line := <-c.recvq:
 			line = normalizeLine(line)
 			c.t.Logf("<-  [%p] %v", c, line)
 		default:
-			c.t.Logf(" x  [%p]\tdrained", c)
 			return c
 		}
 	}

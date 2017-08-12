@@ -145,6 +145,8 @@ func (h *DefaultHandler) modeChan(params []string) {
 		switch req.Mode {
 		case ChanModeKeylock:
 			err = cmds.Keylock(req.Action, req.Param)
+		case ChanModeLimit:
+			err = cmds.Limit(req.Action, req.Param)
 		case ChanModeOper:
 			err = cmds.Oper(req.Action, req.Param)
 		default:

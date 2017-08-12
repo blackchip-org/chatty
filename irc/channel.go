@@ -2,6 +2,7 @@ package irc
 
 import (
 	"sort"
+	"strconv"
 	"sync"
 )
 
@@ -71,7 +72,9 @@ func (c *Chan) Join(cli *Client, key string) *Error {
 	if c.modes.Key != "" && c.modes.Key != key {
 		return NewError(ErrBadChannelKey, c.name)
 	}
-
+	if c.modes.Limit > 0 && len(c.clients) >= c.modes.Limit {
+		return NewError(ErrChannelIsFull, c.name)
+	}
 	if len(c.clients) == 0 {
 		c.modes.Operators[cli.U.ID] = true
 	}
@@ -183,6 +186,43 @@ func (cmd *ChanModeCmds) Keylock(action string, key string) *Error {
 		Action: action,
 		Mode:   ChanModeKeylock,
 		Param:  c.modes.Key,
+	})
+	return nil
+}
+
+func (cmd *ChanModeCmds) Limit(action string, strlimit string) *Error {
+	c := cmd.c
+
+	// Is the action valid?
+	if action != "+" && action != "-" {
+		return nil
+	}
+	set := action == "+"
+
+	// Is the user sending the command an operator?
+	if !c.modes.Operators[cmd.src.U.ID] {
+		// Real server seems to ignore instead of sending an error
+		return nil
+	}
+
+	if set {
+		// Ignore if there isn't a valid limit
+		limit, err := strconv.ParseInt(strlimit, 10, 16)
+		if err != nil {
+			return nil
+		}
+		if limit < 0 {
+			return nil
+		}
+		c.modes.Limit = int(limit)
+	} else {
+		strlimit = ""
+		c.modes.Limit = 0
+	}
+	cmd.changes = append(cmd.changes, modeChange{
+		Action: action,
+		Mode:   ChanModeLimit,
+		Param:  strlimit,
 	})
 	return nil
 }
