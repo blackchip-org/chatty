@@ -105,9 +105,18 @@ func (c *Chan) Part(src *Client, reason string) *Error {
 func (c *Chan) PrivMsg(src *Client, text string) *Error {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
+
 	if _, exists := c.clients[src.U.ID]; !exists {
 		return NewError(ErrCannotSendToChan, c.name)
 	}
+	if c.modes.Moderated {
+		_, oper := c.modes.Operators[src.U.ID]
+		_, voiced := c.modes.Voiced[src.U.ID]
+		if !oper && !voiced {
+			return NewError(ErrCannotSendToChan, c.name)
+		}
+	}
+
 	for _, cli := range c.clients {
 		if cli.U.Nick == src.U.Nick {
 			continue
@@ -227,6 +236,33 @@ func (cmd *ChanModeCmds) Limit(action string, strlimit string) *Error {
 	return nil
 }
 
+func (cmd *ChanModeCmds) Moderated(action string) *Error {
+	c := cmd.c
+
+	// Is the action valid?
+	if action != "+" && action != "-" {
+		return nil
+	}
+	set := action == "+"
+
+	// Is the user sending the command an operator?
+	if !c.modes.Operators[cmd.src.U.ID] {
+		return NewError(ErrChanOpPrivsNeeded, c.name)
+	}
+
+	// Is a mode change needed?
+	if set == c.modes.Moderated {
+		return nil
+	}
+
+	c.modes.Moderated = set
+	cmd.changes = append(cmd.changes, modeChange{
+		Action: action,
+		Mode:   ChanModeModerated,
+	})
+	return nil
+}
+
 func (cmd *ChanModeCmds) Oper(action string, name string) *Error {
 	c := cmd.c
 
@@ -267,6 +303,51 @@ func (cmd *ChanModeCmds) Oper(action string, name string) *Error {
 	cmd.changes = append(cmd.changes, modeChange{
 		Action: action,
 		Mode:   ChanModeOper,
+		Param:  name,
+	})
+	return nil
+}
+
+func (cmd *ChanModeCmds) Voice(action string, name string) *Error {
+	c := cmd.c
+
+	// Is the action valid?
+	if action != "+" && action != "-" {
+		return nil
+	}
+	set := action == "+"
+
+	// Is the target user registered?
+	user, exists := c.nicks.Get(name)
+	if !exists {
+		return nil
+	}
+
+	// Is the target user in this channel?
+	target, yes := c.clients[user.ID]
+	if !yes {
+		return nil
+	}
+
+	// Is the user sending the command an operator?
+	if !c.modes.Operators[cmd.src.U.ID] {
+		return NewError(ErrChanOpPrivsNeeded, c.name)
+	}
+
+	// Is a mode change needed?
+	_, exists = c.modes.Voiced[target.U.ID]
+	if set == exists {
+		return nil
+	}
+
+	if set {
+		c.modes.Voiced[target.U.ID] = true
+	} else {
+		delete(c.modes.Voiced, target.U.ID)
+	}
+	cmd.changes = append(cmd.changes, modeChange{
+		Action: action,
+		Mode:   ChanModeVoice,
 		Param:  name,
 	})
 	return nil

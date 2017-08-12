@@ -147,8 +147,12 @@ func (h *DefaultHandler) modeChan(params []string) {
 			err = cmds.Keylock(req.Action, req.Param)
 		case ChanModeLimit:
 			err = cmds.Limit(req.Action, req.Param)
+		case ChanModeModerated:
+			err = cmds.Moderated(req.Action)
 		case ChanModeOper:
 			err = cmds.Oper(req.Action, req.Param)
+		case ChanModeVoice:
+			err = cmds.Voice(req.Action, req.Param)
 		default:
 			err = NewError(ErrUnknownMode, req.Mode, ch.name)
 		}
@@ -249,7 +253,10 @@ func (h *DefaultHandler) ping(params []string) {
 func (h *DefaultHandler) privMsg(params []string) {
 	target := params[0]
 	text := params[1]
-	h.s.PrivMsg(h.c, target, text)
+	err := h.s.PrivMsg(h.c, target, text)
+	if err != nil {
+		h.c.SendError(err)
+	}
 }
 
 func (h *DefaultHandler) quit(params []string) {
