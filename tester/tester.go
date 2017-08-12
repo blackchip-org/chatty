@@ -26,12 +26,11 @@ func init() {
 var errRecvTimeout = errors.New("recv timeout")
 
 type Server struct {
-	Actual    *irc.Server
-	server    *irc.Server
-	clients   []*Client
-	err       error
-	connDelay time.Duration
-	t         *testing.T
+	Actual  *irc.Server
+	server  *irc.Server
+	clients []*Client
+	err     error
+	t       *testing.T
 }
 
 type Client struct {
@@ -42,6 +41,7 @@ type Client struct {
 	err    error
 	t      *testing.T
 	server *Server
+	nsent  int
 }
 
 func NewServer(t *testing.T) (*Server, *Client) {
@@ -79,9 +79,6 @@ func NewServer(t *testing.T) (*Server, *Client) {
 			}
 		}()
 	}
-	if RealServer {
-		ts.connDelay = 1000 * time.Millisecond
-	}
 	tc := ts.NewClient()
 	return ts, tc
 }
@@ -110,14 +107,13 @@ func (s *Server) NewClient() *Client {
 	if RealServer {
 		tc.debug = true
 	}
-	time.Sleep(s.connDelay)
 	return tc
 }
 
 func (s *Server) Quit() {
 	for _, client := range s.clients {
 		if client.conn != nil {
-			client.Drain()
+			client.drainNoWait()
 			client.Send("QUIT")
 			if RealServer {
 				client.WaitFor("ERROR")
@@ -133,7 +129,7 @@ func (c *Client) connect(addr string) error {
 	for {
 		conn, err := net.Dial("tcp", addr)
 		if err != nil {
-			if retries >= 10 {
+			if retries >= 9 {
 				return err
 			}
 		} else {
@@ -150,6 +146,12 @@ func (c *Client) Send(line string) {
 	if c.err != nil {
 		return
 	}
+	// When testing against a real server, it won't let us flood it and needs to be throttled.
+	// https://tools.ietf.org/html/rfc2813#section-5.8
+	if RealServer && c.nsent > 10 {
+		c.t.Logf(" z  [%p]\tthrottle", c)
+		time.Sleep(2 * time.Second)
+	}
 	c.t.Logf(" -> [%p] %v", c, line)
 	_, err := c.w.WriteString(line + "\r\n")
 	if err != nil {
@@ -160,6 +162,7 @@ func (c *Client) Send(line string) {
 		c.err = err
 		return
 	}
+	c.nsent++
 }
 
 func (c *Client) SendMessage(cmd string, params ...string) {
@@ -171,27 +174,21 @@ func (c *Client) Recv() string {
 	if c.err != nil {
 		return ""
 	}
-	retries := 0
-	for {
-		select {
-		case line := <-c.recvq:
-			line = normalizeLine(line)
-			c.t.Logf("<-  [%p] %v", c, line)
-			return line
-		default:
-			retries++
-			if retries > 20 {
-				if c.err == nil {
-					c.err = errRecvTimeout
-				}
-				return "recv timeout"
-			}
-			if RealServer {
-				time.Sleep(100 * time.Millisecond)
-			} else {
-				time.Sleep(10 * time.Millisecond)
-			}
-		}
+
+	timeout := 300 * time.Millisecond
+	if RealServer {
+		timeout = 5 * time.Second
+	}
+
+	timer := time.NewTimer(timeout)
+	select {
+	case line := <-c.recvq:
+		line = normalizeLine(line)
+		c.t.Logf("<-  [%p] %v", c, line)
+		return line
+	case <-timer.C:
+		c.err = errRecvTimeout
+		return "recv timeout"
 	}
 }
 
@@ -206,6 +203,23 @@ func (c *Client) Drain() *Client {
 			if c.err == errRecvTimeout {
 				c.err = nil
 			}
+			c.t.Logf(" x  [%p]\tdrained", c)
+			return c
+		}
+	}
+}
+
+func (c *Client) drainNoWait() *Client {
+	if c.err != nil {
+		return c
+	}
+	c.t.Logf(" x  [%p]\tdraining (no wait)", c)
+	for {
+		select {
+		case line := <-c.recvq:
+			line = normalizeLine(line)
+			c.t.Logf("<-  [%p] %v", c, line)
+		default:
 			c.t.Logf(" x  [%p]\tdrained", c)
 			return c
 		}

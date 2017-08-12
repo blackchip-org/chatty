@@ -7,6 +7,85 @@ import (
 	"github.com/blackchip-org/chatty/tester"
 )
 
+// ===== Keylock
+
+func TestModeKeylockFail(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c.Drain()
+	c.Send("MODE #gotham +k swordfish")
+
+	c2 := s.NewClient()
+	c2.Login("Robin", "robin 0 * :Boy Wonder")
+	c2.Send("JOIN #gotham")
+	c2.WaitFor(irc.ErrBadChannelKey)
+	if c2.Err() != nil {
+		t.Errorf("unexpected error: %v", c2.Err())
+	}
+}
+
+func TestModeKeylockSuccess(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c.Drain()
+	c.Send("MODE #gotham +k swordfish")
+
+	c2 := s.NewClient()
+	c2.Login("Robin", "robin 0 * :Boy Wonder")
+	c2.Send("JOIN #gotham swordfish")
+	c2.WaitFor(irc.RplEndOfNames)
+	if c2.Err() != nil {
+		t.Errorf("unexpected error: %v", c2.Err())
+	}
+}
+
+func TestModeKeylockNoAction(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c.Send("MODE #gotham k")
+	c.Send("PING hello")
+	c.WaitFor(irc.PongCmd)
+	if c.Err() != nil {
+		t.Errorf("\n want: no error \n have: %v", c.Err())
+	}
+}
+
+func TestModeKeylockNotOper(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+	c2 := s.NewClient()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c2.Login("Joker", "joker 0 * :The Joker").Join("#gotham")
+
+	c2.Send("MODE #gotham +k swordfish")
+	c2.WaitFor(irc.ErrChanOpPrivsNeeded)
+	if c2.Err() != nil {
+		t.Errorf("unexpected error: %v", c2.Err())
+	}
+}
+
+func TestModeKeylockNoModeChange(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c.Send("MODE #gotham -k")
+	c.Send("PING hello")
+	c.WaitFor(irc.PongCmd)
+	if c.Err() != nil {
+		t.Errorf("\n want: no error \n have: %v", c.Err())
+	}
+}
+
+// ==== Oper
+
 func TestModeOper(t *testing.T) {
 	s, c := tester.NewServer(t)
 	defer s.Quit()
@@ -69,7 +148,7 @@ func TestModeOperNoAction(t *testing.T) {
 	defer s.Quit()
 
 	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
-	c.Send("MODE #gotham +o Robin")
+	c.Send("MODE #gotham o Robin")
 	c.Send("PING hello")
 	c.WaitFor(irc.PongCmd)
 	if c.Err() != nil {

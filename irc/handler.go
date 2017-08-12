@@ -97,7 +97,11 @@ func (h *DefaultHandler) join(params []string) {
 		return
 	}
 	name := params[0]
-	ch, err := h.s.Join(h.c, name)
+	key := ""
+	if len(params) > 1 {
+		key = params[1]
+	}
+	ch, err := h.s.Join(h.c, name, key)
 	if err != nil {
 		h.c.SendError(err)
 		return
@@ -139,6 +143,8 @@ func (h *DefaultHandler) modeChan(params []string) {
 	for _, req := range requests {
 		var err *Error
 		switch req.Mode {
+		case ChanModeKeylock:
+			err = cmds.Keylock(req.Action, req.Param)
 		case ChanModeOper:
 			err = cmds.Oper(req.Action, req.Param)
 		default:

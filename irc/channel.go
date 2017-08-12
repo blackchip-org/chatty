@@ -64,9 +64,13 @@ func (c *Chan) Names() []string {
 	return nicks
 }
 
-func (c *Chan) Join(cli *Client) *Error {
+func (c *Chan) Join(cli *Client, key string) *Error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+
+	if c.modes.Key != "" && c.modes.Key != key {
+		return NewError(ErrBadChannelKey, c.name)
+	}
 
 	if len(c.clients) == 0 {
 		c.modes.Operators[cli.U.ID] = true
@@ -150,6 +154,37 @@ func newChanModeCmds(c *Chan, src *Client) ChanModeCmds {
 	}
 	c.mutex.Lock()
 	return cmd
+}
+
+func (cmd *ChanModeCmds) Keylock(action string, key string) *Error {
+	c := cmd.c
+
+	// Is the action valid?
+	if action != "+" && action != "-" {
+		return nil
+	}
+	set := action == "+"
+
+	// Is the user sending the command an operator?
+	if !c.modes.Operators[cmd.src.U.ID] {
+		return NewError(ErrChanOpPrivsNeeded, c.name)
+	}
+
+	if set {
+		// Ignore if no key was sent
+		if key == "" {
+			return nil
+		}
+		c.modes.Key = key
+	} else {
+		c.modes.Key = ""
+	}
+	cmd.changes = append(cmd.changes, modeChange{
+		Action: action,
+		Mode:   ChanModeKeylock,
+		Param:  c.modes.Key,
+	})
+	return nil
 }
 
 func (cmd *ChanModeCmds) Oper(action string, name string) *Error {

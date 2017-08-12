@@ -6,7 +6,7 @@ type ChanModes struct {
 	BanExceptions  []string
 	InviteOnly     bool
 	InviationMasks []string
-	Keylock        string
+	Key            string
 	Limit          int
 	Moderated      bool
 	NoExternalMsgs bool

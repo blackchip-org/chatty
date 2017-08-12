@@ -48,7 +48,7 @@ func (s *Service) Login(c *Client) {
 
 // ==== Commands
 
-func (s *Service) Join(c *Client, name string) (*Chan, *Error) {
+func (s *Service) Join(c *Client, name string, key string) (*Chan, *Error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	ch, exists := s.chans[name]
@@ -56,7 +56,7 @@ func (s *Service) Join(c *Client, name string) (*Chan, *Error) {
 		ch = NewChan(name, s.nicks)
 		s.chans[name] = ch
 	}
-	err := ch.Join(c)
+	err := ch.Join(c, key)
 	if err != nil {
 		return ch, err
 	}
