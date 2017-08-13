@@ -142,7 +142,16 @@ func (h *DefaultHandler) modeChan(params []string) {
 			h.c.SendError(err)
 			return
 		}
-		h.c.Reply(ModeCmd, formatModes(modes)...)
+		fmodes := formatModes(modes)
+		rparams := append([]string{ch.name}, fmodes...)
+		message := Message{
+			Prefix:   h.c.ServerName,
+			Target:   h.c.U.Nick,
+			Cmd:      RplChannelModeIs,
+			Params:   rparams,
+			NoSpaces: true,
+		}
+		h.c.SendMessage(message)
 		return
 	}
 

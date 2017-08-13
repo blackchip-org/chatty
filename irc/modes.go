@@ -1,5 +1,7 @@
 package irc
 
+import "strings"
+
 // https://www.alien.net.au/irc/chanmodes.html
 type ChanModes struct {
 	Bans           []string
@@ -125,12 +127,22 @@ func parseModes(params []string, hasArg map[string]bool) []Mode {
 }
 
 func formatModes(modes []Mode) []string {
+	chars := make([]string, 0)
 	params := make([]string, 0)
+	action := ""
 	for _, mode := range modes {
-		params = append(params, mode.Action+mode.Char)
+		if action != mode.Action {
+			action = mode.Action
+			chars = append(chars, action)
+		}
+		chars = append(chars, mode.Char)
 		if mode.Param != "" {
 			params = append(params, mode.Param)
 		}
 	}
-	return params
+	strchars := strings.Join(chars, "")
+	if strchars == "" {
+		strchars = "+"
+	}
+	return append([]string{strchars}, params...)
 }

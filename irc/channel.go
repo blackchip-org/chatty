@@ -163,7 +163,20 @@ func (c *Chan) Members() []*Client {
 }
 
 func (c *Chan) Mode(src *Client) ([]Mode, *Error) {
-	return nil, nil
+	modes := make([]Mode, 0)
+	if c.modes.TopicLock {
+		modes = append(modes, Mode{
+			Action: "+",
+			Char:   ChanModeTopicLock,
+		})
+	}
+	if c.modes.NoExternalMsgs {
+		modes = append(modes, Mode{
+			Action: "+",
+			Char:   ChanModeNoExternalMsgs,
+		})
+	}
+	return modes, nil
 }
 
 func (c *Chan) SetMode(src *Client) ChanModeCmds {
