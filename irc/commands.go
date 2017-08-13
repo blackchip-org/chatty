@@ -14,6 +14,7 @@ const (
 	PingCmd    = "PING"
 	PongCmd    = "PONG"
 	PrivMsgCmd = "PRIVMSG"
+	TopicCmd   = "TOPIC"
 	UserCmd    = "USER"
 	QuitCmd    = "QUIT"
 )
@@ -33,7 +34,7 @@ const (
 
 var RplText = map[string]string{
 	RplEndOfNames: "End of NAMES list.",
-	RplNoTopic:    "No topic is set",
+	RplNoTopic:    "No topic is set.",
 }
 
 const (

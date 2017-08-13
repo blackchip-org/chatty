@@ -44,12 +44,6 @@ func (c *Chan) Name() string {
 	return c.name
 }
 
-func (c *Chan) Topic() string {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
-	return c.topic
-}
-
 func (c *Chan) Status() string {
 	// https://modern.ircdocs.horse/#rplnamreply-353
 	return "="
@@ -111,7 +105,6 @@ func (c *Chan) PrivMsg(src *Client, text string) *Error {
 	if _, member := c.clients[src.U.ID]; c.modes.NoExternalMsgs && !member {
 		return NewError(ErrCannotSendToChan, c.name)
 	}
-
 	if c.modes.Moderated {
 		_, oper := c.modes.Operators[src.U.ID]
 		_, voiced := c.modes.Voiced[src.U.ID]
@@ -129,9 +122,39 @@ func (c *Chan) PrivMsg(src *Client, text string) *Error {
 	return nil
 }
 
+func (c *Chan) Topic(src *Client) (string, *Error) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	if _, member := c.clients[src.U.ID]; !member {
+		return "", NewError(ErrNotOnChannel, c.name)
+	}
+
+	return c.topic, nil
+}
+
+func (c *Chan) SetTopic(src *Client, topic string) *Error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if _, member := c.clients[src.U.ID]; !member {
+		return NewError(ErrCannotSendToChan, c.name)
+	}
+	if _, oper := c.modes.Operators[src.U.ID]; !oper && c.modes.TopicLock {
+		return NewError(ErrChanOpPrivsNeeded, c.name)
+	}
+
+	c.topic = topic
+	for _, client := range c.clients {
+		client.Relay(src.U, TopicCmd, c.name, c.topic)
+	}
+	return nil
+}
+
 func (c *Chan) Members() []*Client {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
+
 	members := make([]*Client, 0, len(c.clients))
 	for _, client := range c.clients {
 		members = append(members, client)

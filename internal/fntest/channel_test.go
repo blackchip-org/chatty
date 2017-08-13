@@ -65,6 +65,40 @@ func TestMessage(t *testing.T) {
 	}
 }
 
+func TestTopicSet(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c.Send("TOPIC #gotham :Gotham City News")
+	c.WaitFor(irc.TopicCmd)
+
+	c.Send("TOPIC #gotham")
+	have := c.Recv()
+	want := ":irc.localhost 332 Batman #gotham :Gotham City News"
+	if want != have {
+		t.Fatalf("\n want: %v \n have: %v", want, have)
+	}
+}
+
+func TestTopicClear(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c.Send("TOPIC #gotham :Gotham City News")
+	c.WaitFor(irc.TopicCmd)
+	c.Send("TOPIC #gotham :")
+	c.WaitFor(irc.TopicCmd)
+
+	c.Send("TOPIC #gotham")
+	have := c.Recv()
+	want := ":irc.localhost 331 Batman #gotham :No topic is set."
+	if want != have {
+		t.Fatalf("\n want: %v \n have: %v", want, have)
+	}
+}
+
 func TestPartChannel(t *testing.T) {
 	s, c := tester.NewServer(t)
 	defer s.Quit()

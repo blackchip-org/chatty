@@ -62,6 +62,8 @@ func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 		h.ping(cmd.Params)
 	case PrivMsgCmd:
 		h.privMsg(cmd.Params)
+	case TopicCmd:
+		h.topic(cmd.Params)
 	case UserCmd:
 		h.user(cmd.Params)
 	case QuitCmd:
@@ -101,17 +103,12 @@ func (h *DefaultHandler) join(params []string) {
 	if len(params) > 1 {
 		key = params[1]
 	}
-	ch, err := h.s.Join(h.c, name, key)
+	_, err := h.s.Join(h.c, name, key)
 	if err != nil {
 		h.c.SendError(err)
 		return
 	}
-	topic := ch.Topic()
-	if topic == "" {
-		h.c.Reply(RplNoTopic)
-	} else {
-		h.c.Reply(RplTopic, topic)
-	}
+	h.topic([]string{name})
 	h.names([]string{name})
 }
 
@@ -258,6 +255,40 @@ func (h *DefaultHandler) privMsg(params []string) {
 	err := h.s.PrivMsg(h.c, target, text)
 	if err != nil {
 		h.c.SendError(err)
+	}
+}
+
+func (h *DefaultHandler) topic(params []string) {
+	if len(params) == 0 {
+		h.c.Send(ErrNeedMoreParams, TopicCmd)
+		return
+	}
+
+	chname := params[0]
+	ch, err := h.s.Chan(chname)
+	if err != nil {
+		h.c.SendError(err)
+		return
+	}
+
+	if len(params) == 1 {
+		topic, err := ch.Topic(h.c)
+		if err != nil {
+			h.c.SendError(err)
+			return
+		}
+		if topic == "" {
+			h.c.Reply(RplNoTopic, ch.name)
+		} else {
+			h.c.Reply(RplTopic, ch.name, topic)
+		}
+	} else {
+		topic := params[1]
+		err := ch.SetTopic(h.c, topic)
+		if err != nil {
+			h.c.SendError(err)
+			return
+		}
 	}
 }
 
