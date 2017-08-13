@@ -1,6 +1,0 @@
-#!/bin/bash
-
-ID=$(docker run -p 6667:6667 -d ircd)
-go test ./internal/fntest -run $@ --args --real-server
-docker kill $ID
-

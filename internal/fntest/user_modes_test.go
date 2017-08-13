@@ -3,7 +3,8 @@ package fntest
 import (
 	"testing"
 
-	"github.com/blackchip-org/chatty/tester"
+	"github.com/blackchip-org/chatty/internal/tester"
+
 )
 
 func TestModeInvisible(t *testing.T) {

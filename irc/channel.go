@@ -138,7 +138,7 @@ func (c *Chan) SetTopic(src *Client, topic string) *Error {
 	defer c.mutex.Unlock()
 
 	if _, member := c.clients[src.U.ID]; !member {
-		return NewError(ErrCannotSendToChan, c.name)
+		return NewError(ErrNotOnChannel, c.name)
 	}
 	if _, oper := c.modes.Operators[src.U.ID]; !oper && c.modes.TopicLock {
 		return NewError(ErrChanOpPrivsNeeded, c.name)

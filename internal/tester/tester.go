@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net"
+	"os/exec"
 	"strconv"
 	"strings"
 	"testing"
@@ -26,14 +28,17 @@ func init() {
 var errRecvTimeout = errors.New("recv timeout")
 
 type Server struct {
-	Actual  *irc.Server
-	server  *irc.Server
-	clients []*Client
-	err     error
-	t       *testing.T
+	Actual    *irc.Server
+	server    *irc.Server
+	clients   []*Client
+	err       error
+	t         *testing.T
+	nextID    int
+	timeStart time.Time
 }
 
 type Client struct {
+	id     int
 	conn   net.Conn
 	recvq  chan string
 	w      *bufio.Writer
@@ -57,8 +62,10 @@ func NewServer(t *testing.T) (*Server, *Client) {
 			Name: "irc.localhost",
 			Addr: addr,
 		},
-		clients: make([]*Client, 0),
-		t:       t,
+		clients:   make([]*Client, 0),
+		t:         t,
+		nextID:    1,
+		timeStart: time.Now(),
 	}
 	ts.Actual = ts.server
 	if !RealServer {
@@ -78,6 +85,11 @@ func NewServer(t *testing.T) (*Server, *Client) {
 				}
 			}
 		}()
+	} else {
+		out, err := exec.Command("docker", "start", "irc-test").CombinedOutput()
+		if err != nil {
+			t.Fatalf("unable to start docker container:\n%v", string(out))
+		}
 	}
 	tc := ts.NewClient()
 	return ts, tc
@@ -88,7 +100,9 @@ func (s *Server) NewClient() *Client {
 		recvq:  make(chan string, 1024),
 		t:      s.t,
 		server: s,
+		id:     s.nextID,
 	}
+	s.nextID++
 	s.clients = append(s.clients, tc)
 	if s.err != nil {
 		tc.err = s.err
@@ -114,15 +128,17 @@ func (s *Server) Quit() {
 	for _, client := range s.clients {
 		if client.conn != nil {
 			client.drainNoWait()
-			client.err = nil
 			client.Send("QUIT")
-			if RealServer {
-				client.WaitFor("ERROR")
-			}
 			client.conn.Close()
 		}
 	}
 	s.server.Quit()
+	if RealServer {
+		out, err := exec.Command("docker", "kill", "irc-test").CombinedOutput()
+		if err != nil {
+			s.t.Errorf("error stopping docker instance: \n%v", string(out))
+		}
+	}
 }
 
 func (c *Client) connect(addr string) error {
@@ -150,10 +166,10 @@ func (c *Client) Send(line string) {
 	// When testing against a real server, it won't let us flood it and needs to be throttled.
 	// https://tools.ietf.org/html/rfc2813#section-5.8
 	if RealServer && c.nsent >= 10 {
-		c.t.Logf(" z  [%p]\tthrottle", c)
+		c.logf(" z ", "\tthrottle")
 		time.Sleep(2500 * time.Millisecond)
 	}
-	c.t.Logf(" -> [%p] %v", c, line)
+	c.logf(" ->", line)
 	_, err := c.w.WriteString(line + "\r\n")
 	if err != nil {
 		c.err = err
@@ -178,14 +194,14 @@ func (c *Client) Recv() string {
 
 	timeout := 300 * time.Millisecond
 	if RealServer {
-		timeout = 4500 * time.Millisecond
+		timeout = 5000 * time.Millisecond
 	}
 
 	timer := time.NewTimer(timeout)
 	select {
 	case line := <-c.recvq:
 		line = normalizeLine(line)
-		c.t.Logf("<-  [%p] %v", c, line)
+		c.logf("<- ", line)
 		return line
 	case <-timer.C:
 		c.err = errRecvTimeout
@@ -197,14 +213,14 @@ func (c *Client) Drain() *Client {
 	if c.err != nil {
 		return c
 	}
-	c.t.Logf(" x  [%p]\tdraining", c)
+	c.logf(" x ", "\tdraining")
 	for {
 		_ = c.Recv()
 		if c.err != nil {
 			if c.err == errRecvTimeout {
 				c.err = nil
 			}
-			c.t.Logf(" x  [%p]\tdrained", c)
+			c.logf(" x ", "\tdrained")
 			return c
 		}
 	}
@@ -215,7 +231,7 @@ func (c *Client) drainNoWait() *Client {
 		select {
 		case line := <-c.recvq:
 			line = normalizeLine(line)
-			c.t.Logf("<-  [%p] %v", c, line)
+			c.logf("<- ", line)
 		default:
 			return c
 		}
@@ -239,16 +255,16 @@ func (c *Client) reader() error {
 }
 
 func (c *Client) WaitForAny(expecting []string) irc.Message {
-	c.t.Logf(" !  [%p]\t%v wait", c, strings.Join(expecting, " or "))
+	c.logf(" ! ", "\twait %v", strings.Join(expecting, " or "))
 	for {
 		m := c.RecvMessage()
 		if c.err != nil {
-			c.t.Logf(" *  [%p]\terror %v", c, c.err)
+			c.logf(" * ", "\terror %v", c.err)
 			return irc.Message{}
 		}
 		for _, expect := range expecting {
 			if m.Cmd == expect {
-				c.t.Logf(" .  [%p]\t%v recv", c, expect)
+				c.logf(" . ", "\trecv %v", expect)
 				return m
 			}
 		}
@@ -260,9 +276,9 @@ func (c *Client) WaitFor(reply string) irc.Message {
 }
 
 func (c *Client) Login(nick string, user string) *Client {
-	if RealServer {
-		c.WaitFor("020")
-	}
+	//if RealServer {
+	//	c.WaitFor("020")
+	//}
 	c.Send("NICK " + nick)
 	c.Send("USER " + user)
 	c.WaitForAny([]string{irc.RplEndOfMotd, irc.ErrNoMotd})
@@ -282,6 +298,12 @@ func (c *Client) Join(chname string) *Client {
 
 func (c *Client) Err() error {
 	return c.err
+}
+
+func (c *Client) logf(prefix string, format string, params ...interface{}) {
+	tail := fmt.Sprintf(format, params...)
+	since := time.Since(c.server.timeStart) / time.Millisecond
+	c.t.Logf("%5d %v [%v] %v", since, prefix, c.id, tail)
 }
 
 // Replace server specific host info with localhost for testing

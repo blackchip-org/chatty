@@ -1,6 +1,8 @@
 package fntest
 
-import "strings"
+import (
+	"strings"
+)
 
 func AnyOf(base string, matches ...string) string {
 	for _, match := range matches {

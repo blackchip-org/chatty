@@ -3,8 +3,8 @@ package fntest
 import (
 	"testing"
 
+	"github.com/blackchip-org/chatty/internal/tester"
 	"github.com/blackchip-org/chatty/irc"
-	"github.com/blackchip-org/chatty/tester"
 )
 
 func TestJoinChannel(t *testing.T) {
@@ -81,6 +81,21 @@ func TestTopicSet(t *testing.T) {
 	}
 }
 
+func TestTopicSetNotInChannel(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c2 := s.NewClient()
+	c2.Login("Robin", "robin 0 * :Boy Wonder")
+
+	c2.Send("TOPIC #gotham :Gotham City News")
+	c2.WaitFor(irc.ErrNotOnChannel)
+	if c2.Err() != nil {
+		t.Errorf("unexpected error: %v", c2.Err())
+	}
+}
+
 func TestTopicClear(t *testing.T) {
 	s, c := tester.NewServer(t)
 	defer s.Quit()
@@ -92,6 +107,12 @@ func TestTopicClear(t *testing.T) {
 	c.WaitFor(irc.TopicCmd)
 
 	c.Send("TOPIC #gotham")
+	//c.WaitFor(irc.RplNoTopic)
+	/*
+		if tester.RealServer {
+			c.WaitFor("333") // RPL_TOPICWHOTIME
+		}
+	*/
 	have := c.Recv()
 	want := ":irc.localhost 331 Batman #gotham :No topic is set."
 	if want != have {

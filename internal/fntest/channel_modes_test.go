@@ -3,8 +3,8 @@ package fntest
 import (
 	"testing"
 
+	"github.com/blackchip-org/chatty/internal/tester"
 	"github.com/blackchip-org/chatty/irc"
-	"github.com/blackchip-org/chatty/tester"
 )
 
 // ===== Keylock
