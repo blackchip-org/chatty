@@ -361,6 +361,33 @@ func (cmd *ChanModeCmds) Oper(action string, name string) *Error {
 	return nil
 }
 
+func (cmd *ChanModeCmds) TopicLock(action string) *Error {
+	c := cmd.c
+
+	// Is the action valid?
+	if action != "+" && action != "-" {
+		return nil
+	}
+	set := action == "+"
+
+	// Is the user sending the command an operator?
+	if !c.modes.Operators[cmd.src.U.ID] {
+		return NewError(ErrChanOpPrivsNeeded, c.name)
+	}
+
+	// Is a mode change needed?
+	if set == c.modes.TopicLock {
+		return nil
+	}
+
+	c.modes.TopicLock = set
+	cmd.changes = append(cmd.changes, modeChange{
+		Action: action,
+		Mode:   ChanModeNoExternalMsgs,
+	})
+	return nil
+}
+
 func (cmd *ChanModeCmds) Voice(action string, name string) *Error {
 	c := cmd.c
 

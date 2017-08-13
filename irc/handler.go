@@ -148,6 +148,8 @@ func (h *DefaultHandler) modeChan(params []string) {
 			err = cmds.Moderated(req.Action)
 		case ChanModeNoExternalMsgs:
 			err = cmds.NoExternalMsgs(req.Action)
+		case ChanModeTopicLock:
+			err = cmds.TopicLock(req.Action)
 		case ChanModeOper:
 			err = cmds.Oper(req.Action, req.Param)
 		case ChanModeVoice:
