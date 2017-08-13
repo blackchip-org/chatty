@@ -35,6 +35,8 @@ func NewChan(name string, nicks *Nicks) *Chan {
 		clients: make(map[UserID]*Client),
 		modes:   NewChanModes(),
 	}
+	c.modes.NoExternalMsgs = true
+	c.modes.TopicLock = true
 	return c
 }
 
@@ -106,9 +108,10 @@ func (c *Chan) PrivMsg(src *Client, text string) *Error {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
-	if _, exists := c.clients[src.U.ID]; !exists {
+	if _, member := c.clients[src.U.ID]; c.modes.NoExternalMsgs && !member {
 		return NewError(ErrCannotSendToChan, c.name)
 	}
+
 	if c.modes.Moderated {
 		_, oper := c.modes.Operators[src.U.ID]
 		_, voiced := c.modes.Voiced[src.U.ID]
@@ -259,6 +262,33 @@ func (cmd *ChanModeCmds) Moderated(action string) *Error {
 	cmd.changes = append(cmd.changes, modeChange{
 		Action: action,
 		Mode:   ChanModeModerated,
+	})
+	return nil
+}
+
+func (cmd *ChanModeCmds) NoExternalMsgs(action string) *Error {
+	c := cmd.c
+
+	// Is the action valid?
+	if action != "+" && action != "-" {
+		return nil
+	}
+	set := action == "+"
+
+	// Is the user sending the command an operator?
+	if !c.modes.Operators[cmd.src.U.ID] {
+		return NewError(ErrChanOpPrivsNeeded, c.name)
+	}
+
+	// Is a mode change needed?
+	if set == c.modes.NoExternalMsgs {
+		return nil
+	}
+
+	c.modes.NoExternalMsgs = set
+	cmd.changes = append(cmd.changes, modeChange{
+		Action: action,
+		Mode:   ChanModeNoExternalMsgs,
 	})
 	return nil
 }

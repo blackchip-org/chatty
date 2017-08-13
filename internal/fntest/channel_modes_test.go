@@ -220,6 +220,51 @@ func TestModeModeratedWithVoice(t *testing.T) {
 	}
 }
 
+// ==== No External Mesages
+func TestModeNoExternalMsgs(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+	c2 := s.NewClient()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c2.Login("Robin", "robin 0 * :Boy Wonder").Join("#batcave")
+
+	if tester.RealServer {
+		c.Send("MODE #gotham +n")
+		c.WaitFor(irc.ModeCmd)
+	}
+
+	c2.Drain()
+	c2.Send("PRIVMSG #gotham :Can you hear me now?")
+	c2.WaitFor(irc.ErrCannotSendToChan)
+	if c2.Err() != nil {
+		t.Fatalf("unexpected error: %v", c2.Err())
+	}
+}
+
+func TestModeAllowExternalMessages(t *testing.T) {
+	s, c := tester.NewServer(t)
+	defer s.Quit()
+	c2 := s.NewClient()
+
+	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c2.Login("Robin", "robin 0 * :Boy Wonder").Join("#gotham")
+
+	if tester.RealServer {
+		c.Send("MODE #gotham +n")
+		c.WaitFor(irc.ModeCmd)
+	}
+
+	c.Send("MODE #gotham -n")
+	c.WaitFor(irc.ModeCmd)
+
+	c2.Send("PRIVMSG #gotham :Can you hear me now?")
+	c.WaitFor(irc.PrivMsgCmd)
+	if c.Err() != nil {
+		t.Fatalf("unexpected error: %v", c.Err())
+	}
+}
+
 // ==== Oper
 
 func TestModeOper(t *testing.T) {
