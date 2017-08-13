@@ -162,7 +162,11 @@ func (c *Chan) Members() []*Client {
 	return members
 }
 
-func (c *Chan) Mode(src *Client) ChanModeCmds {
+func (c *Chan) Mode(src *Client) ([]Mode, *Error) {
+	return nil, nil
+}
+
+func (c *Chan) SetMode(src *Client) ChanModeCmds {
 	return newChanModeCmds(c, src)
 }
 
@@ -181,14 +185,14 @@ func (c *Chan) remove(src *Client) {
 type ChanModeCmds struct {
 	c       *Chan
 	src     *Client
-	changes []modeChange
+	changes []Mode
 }
 
 func newChanModeCmds(c *Chan, src *Client) ChanModeCmds {
 	cmd := ChanModeCmds{
 		c:       c,
 		src:     src,
-		changes: make([]modeChange, 0),
+		changes: make([]Mode, 0),
 	}
 	c.mutex.Lock()
 	return cmd
@@ -217,9 +221,9 @@ func (cmd *ChanModeCmds) Keylock(action string, key string) *Error {
 	} else {
 		c.modes.Key = ""
 	}
-	cmd.changes = append(cmd.changes, modeChange{
+	cmd.changes = append(cmd.changes, Mode{
 		Action: action,
-		Mode:   ChanModeKeylock,
+		Char:   ChanModeKeylock,
 		Param:  c.modes.Key,
 	})
 	return nil
@@ -254,9 +258,9 @@ func (cmd *ChanModeCmds) Limit(action string, strlimit string) *Error {
 		strlimit = ""
 		c.modes.Limit = 0
 	}
-	cmd.changes = append(cmd.changes, modeChange{
+	cmd.changes = append(cmd.changes, Mode{
 		Action: action,
-		Mode:   ChanModeLimit,
+		Char:   ChanModeLimit,
 		Param:  strlimit,
 	})
 	return nil
@@ -282,9 +286,9 @@ func (cmd *ChanModeCmds) Moderated(action string) *Error {
 	}
 
 	c.modes.Moderated = set
-	cmd.changes = append(cmd.changes, modeChange{
+	cmd.changes = append(cmd.changes, Mode{
 		Action: action,
-		Mode:   ChanModeModerated,
+		Char:   ChanModeModerated,
 	})
 	return nil
 }
@@ -309,9 +313,9 @@ func (cmd *ChanModeCmds) NoExternalMsgs(action string) *Error {
 	}
 
 	c.modes.NoExternalMsgs = set
-	cmd.changes = append(cmd.changes, modeChange{
+	cmd.changes = append(cmd.changes, Mode{
 		Action: action,
-		Mode:   ChanModeNoExternalMsgs,
+		Char:   ChanModeNoExternalMsgs,
 	})
 	return nil
 }
@@ -353,9 +357,9 @@ func (cmd *ChanModeCmds) Oper(action string, name string) *Error {
 	} else {
 		delete(c.modes.Operators, target.U.ID)
 	}
-	cmd.changes = append(cmd.changes, modeChange{
+	cmd.changes = append(cmd.changes, Mode{
 		Action: action,
-		Mode:   ChanModeOper,
+		Char:   ChanModeOper,
 		Param:  name,
 	})
 	return nil
@@ -381,9 +385,9 @@ func (cmd *ChanModeCmds) TopicLock(action string) *Error {
 	}
 
 	c.modes.TopicLock = set
-	cmd.changes = append(cmd.changes, modeChange{
+	cmd.changes = append(cmd.changes, Mode{
 		Action: action,
-		Mode:   ChanModeNoExternalMsgs,
+		Char:   ChanModeTopicLock,
 	})
 	return nil
 }
@@ -425,9 +429,9 @@ func (cmd *ChanModeCmds) Voice(action string, name string) *Error {
 	} else {
 		delete(c.modes.Voiced, target.U.ID)
 	}
-	cmd.changes = append(cmd.changes, modeChange{
+	cmd.changes = append(cmd.changes, Mode{
 		Action: action,
-		Mode:   ChanModeVoice,
+		Char:   ChanModeVoice,
 		Param:  name,
 	})
 	return nil
@@ -436,7 +440,7 @@ func (cmd *ChanModeCmds) Voice(action string, name string) *Error {
 func (cmd ChanModeCmds) Done() {
 	if len(cmd.changes) > 0 {
 		for _, cli := range cmd.c.clients {
-			params := append([]string{cmd.c.name}, formatModeChanges(cmd.changes)...)
+			params := append([]string{cmd.c.name}, formatModes(cmd.changes)...)
 			m := Message{
 				Prefix:   cmd.src.U.Origin(),
 				Cmd:      ModeCmd,

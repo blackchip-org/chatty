@@ -125,21 +125,33 @@ func (h *DefaultHandler) mode(params []string) {
 }
 
 func (h *DefaultHandler) modeChan(params []string) {
-	if len(params) < 2 {
+	if len(params) < 1 {
 		h.c.SendError(NewError(ErrNeedMoreParams, ModeCmd))
 		return
 	}
-	chname, params := params[0], params[1:]
+	chname := params[0]
 	ch, err := h.s.Chan(chname)
 	if err != nil {
 		h.c.SendError(err)
 		return
 	}
-	requests := parseChanModeChanges(params)
-	cmds := ch.Mode(h.c)
+
+	if len(params) == 1 {
+		modes, err := ch.Mode(h.c)
+		if err != nil {
+			h.c.SendError(err)
+			return
+		}
+		h.c.Reply(ModeCmd, formatModes(modes)...)
+		return
+	}
+
+	params = params[1:]
+	requests := parseChanModes(params)
+	cmds := ch.SetMode(h.c)
 	for _, req := range requests {
 		var err *Error
-		switch req.Mode {
+		switch req.Char {
 		case ChanModeKeylock:
 			err = cmds.Keylock(req.Action, req.Param)
 		case ChanModeLimit:
@@ -155,7 +167,7 @@ func (h *DefaultHandler) modeChan(params []string) {
 		case ChanModeVoice:
 			err = cmds.Voice(req.Action, req.Param)
 		default:
-			err = NewError(ErrUnknownMode, req.Mode, ch.name)
+			err = NewError(ErrUnknownMode, req.Char, ch.name)
 		}
 		if err != nil {
 			h.c.SendError(err)
@@ -174,15 +186,15 @@ func (h *DefaultHandler) modeUser(params []string) {
 	if nick != h.c.U.Nick {
 		h.c.SendError(NewError(ErrUsersDontMatch))
 	}
-	requests := parseUserModeChanges(params[1:])
+	requests := parseUserModes(params[1:])
 	cmds := h.s.Mode(h.c)
 	for _, req := range requests {
 		var err *Error
-		switch req.Mode {
+		switch req.Char {
 		case UserModeInvisible:
 			err = cmds.Invisible(req.Action)
 		default:
-			err = NewError(ErrUnknownMode, req.Mode)
+			err = NewError(ErrUnknownMode, req.Char)
 		}
 		if err != nil {
 			h.c.SendError(err)

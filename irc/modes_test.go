@@ -6,51 +6,51 @@ import (
 	"testing"
 )
 
-func mc(action string, mode string, param string) modeChange {
-	return modeChange{
+func mc(action string, char string, param string) Mode {
+	return Mode{
 		Action: action,
-		Mode:   mode,
+		Char:   char,
 		Param:  param,
 	}
 }
 
 var parseModeTests = []struct {
 	modes   string
-	changes []modeChange
+	changes []Mode
 }{
-	{"i", []modeChange{
+	{"i", []Mode{
 		mc("", "i", ""),
 	}},
-	{"+i", []modeChange{
+	{"+i", []Mode{
 		mc("+", "i", ""),
 	}},
-	{"-i", []modeChange{
+	{"-i", []Mode{
 		mc("-", "i", ""),
 	}},
-	{"+nt", []modeChange{
+	{"+nt", []Mode{
 		mc("+", "n", ""),
 		mc("+", "t", ""),
 	}},
-	{"+n +t", []modeChange{
+	{"+n +t", []Mode{
 		mc("+", "n", ""),
 		mc("+", "t", ""),
 	}},
-	{"+n-ti", []modeChange{
+	{"+n-ti", []Mode{
 		mc("+", "n", ""),
 		mc("-", "t", ""),
 		mc("-", "i", ""),
 	}},
-	{"+nbI foo bar", []modeChange{
+	{"+nbI foo bar", []Mode{
 		mc("+", "n", ""),
 		mc("+", "b", "foo"),
 		mc("+", "I", "bar"),
 	}},
-	{"+bnI foo bar", []modeChange{
+	{"+bnI foo bar", []Mode{
 		mc("+", "b", "foo"),
 		mc("+", "n", ""),
 		mc("+", "I", "bar"),
 	}},
-	{"+b foo +b bar", []modeChange{
+	{"+b foo +b bar", []Mode{
 		mc("+", "b", "foo"),
 		mc("+", "b", "bar"),
 	}},
@@ -60,7 +60,7 @@ func TestChanParseModes(t *testing.T) {
 	for _, test := range parseModeTests {
 		t.Run(test.modes, func(t *testing.T) {
 			want := test.changes
-			have := parseChanModeChanges(strings.Split(test.modes, " "))
+			have := parseChanModes(strings.Split(test.modes, " "))
 			if !reflect.DeepEqual(want, have) {
 				t.Errorf("\n want: %v \n have: %v", want, have)
 			}

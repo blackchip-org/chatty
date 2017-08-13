@@ -132,14 +132,14 @@ func (s *Service) Quit(src *Client, reason string) {
 type UserModeCmds struct {
 	s       *Service
 	src     *Client
-	changes []modeChange
+	changes []Mode
 }
 
 func newUserModeCmds(s *Service, src *Client) *UserModeCmds {
 	cmd := &UserModeCmds{
 		s:       s,
 		src:     src,
-		changes: make([]modeChange, 0),
+		changes: make([]Mode, 0),
 	}
 	s.mutex.Lock()
 	return cmd
@@ -161,16 +161,16 @@ func (cmd *UserModeCmds) Invisible(action string) *Error {
 		return nil
 	}
 	modes.Invisible = set
-	cmd.changes = append(cmd.changes, modeChange{
+	cmd.changes = append(cmd.changes, Mode{
 		Action: action,
-		Mode:   UserModeInvisible,
+		Char:   UserModeInvisible,
 	})
 	return nil
 }
 
 func (cmd UserModeCmds) Done() {
 	if len(cmd.changes) > 0 {
-		params := append([]string{cmd.src.U.Nick}, formatModeChanges(cmd.changes)...)
+		params := append([]string{cmd.src.U.Nick}, formatModes(cmd.changes)...)
 		m := Message{
 			Prefix: cmd.src.U.Nick,
 			Cmd:    ModeCmd,
