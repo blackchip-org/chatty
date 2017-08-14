@@ -83,6 +83,7 @@ type Mode struct {
 	Action string
 	Char   string
 	Param  string
+	List   []string
 }
 
 func parseChanModes(params []string) []Mode {
@@ -130,7 +131,14 @@ func formatModes(modes []Mode) []string {
 	chars := make([]string, 0)
 	params := make([]string, 0)
 	action := ""
+	query := false
 	for _, mode := range modes {
+		// If this is a mode query for a list, skip as it wil be sent
+		// as separate messages later.
+		if mode.List != nil {
+			query = true
+			continue
+		}
 		if action != mode.Action {
 			action = mode.Action
 			chars = append(chars, action)
@@ -141,6 +149,9 @@ func formatModes(modes []Mode) []string {
 		}
 	}
 	strchars := strings.Join(chars, "")
+	if strchars == "" && query {
+		return []string{}
+	}
 	if strchars == "" {
 		strchars = "+"
 	}

@@ -61,7 +61,7 @@ func (c *Chan) Names() []string {
 	return nicks
 }
 
-func (c *Chan) Join(cli *Client, key string) error {
+func (c *Chan) Join(src *Client, key string) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -72,12 +72,12 @@ func (c *Chan) Join(cli *Client, key string) error {
 		return NewError(ErrChannelIsFull, c.name)
 	}
 	if len(c.clients) == 0 {
-		c.modes.Operators[cli.User.ID] = true
+		c.modes.Operators[src.User.ID] = true
 	}
-	c.clients[cli.User.ID] = cli
+	c.clients[src.User.ID] = src
 	names := make([]string, 0, len(c.clients))
 	for _, cli := range c.clients {
-		cli.Relay(cli.User, JoinCmd, c.name)
+		cli.Relay(src.User, JoinCmd, c.name)
 		names = append(names, cli.User.Nick)
 	}
 	return nil
@@ -209,6 +209,15 @@ func newChanModeCmds(c *Chan, src *Client) ChanModeCmds {
 	}
 	c.mutex.Lock()
 	return cmd
+}
+
+func (cmd *ChanModeCmds) Ban(action string, who string) error {
+	cmd.changes = append(cmd.changes, Mode{
+		Action: action,
+		Char:   ChanModeBan,
+		List:   []string{},
+	})
+	return nil
 }
 
 func (cmd *ChanModeCmds) Keylock(action string, key string) error {
@@ -454,13 +463,23 @@ func (cmd ChanModeCmds) Done() {
 	if len(cmd.changes) > 0 {
 		for _, cli := range cmd.c.clients {
 			params := append([]string{cmd.c.name}, formatModes(cmd.changes)...)
-			m := Message{
-				Prefix:   cmd.src.User.Origin(),
-				Cmd:      ModeCmd,
-				Params:   params,
-				NoSpaces: true,
+			// If the only param is the channel name, there is nothing
+			// to say
+			if len(params) > 1 {
+				m := Message{
+					Prefix:   cmd.src.User.Origin(),
+					Cmd:      ModeCmd,
+					Params:   params,
+					NoSpaces: true,
+				}
+				cli.SendMessage(m)
 			}
-			cli.SendMessage(m)
+		}
+		for _, mode := range cmd.changes {
+			switch {
+			case mode.Char == ChanModeBan && mode.List != nil:
+				cmd.src.Reply(RplEndOfBanList, cmd.c.name)
+			}
 		}
 	}
 	cmd.c.mutex.Unlock()

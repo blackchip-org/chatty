@@ -1,8 +1,10 @@
 package irc
 
 const (
+	RplBanList       = "367"
 	RplChannelModeIs = "324"
 	RplCreated       = "003"
+	RplEndOfBanList  = "368"
 	RplEndOfMotd     = "376"
 	RplEndOfNames    = "366"
 	RplEndOfWho      = "315"
@@ -17,7 +19,8 @@ const (
 )
 
 var RplText = map[string]string{
-	RplEndOfNames: "End of NAMES list.",
-	RplEndOfWho:   "End of WHO list.",
-	RplNoTopic:    "No topic is set.",
+	RplEndOfBanList: "End of Channel Ban List",
+	RplEndOfNames:   "End of NAMES list.",
+	RplEndOfWho:     "End of WHO list.",
+	RplNoTopic:      "No topic is set.",
 }

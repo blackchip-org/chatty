@@ -163,6 +163,8 @@ func (h *DefaultHandler) modeChan(params []string) {
 	for _, req := range requests {
 		var err error
 		switch req.Char {
+		case ChanModeBan:
+			err = cmds.Ban(req.Action, req.Param)
 		case ChanModeKeylock:
 			err = cmds.Keylock(req.Action, req.Param)
 		case ChanModeLimit:
