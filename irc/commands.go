@@ -17,4 +17,5 @@ const (
 	TopicCmd   = "TOPIC"
 	UserCmd    = "USER"
 	QuitCmd    = "QUIT"
+	WhoCmd     = "WHO"
 )

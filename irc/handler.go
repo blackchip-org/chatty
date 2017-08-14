@@ -68,6 +68,8 @@ func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 		h.user(cmd.Params)
 	case QuitCmd:
 		h.quit(cmd.Params)
+	case WhoCmd:
+		h.who(cmd.Params)
 	default:
 		handled = false
 		log.Printf("unhandled message: %+v", cmd)
@@ -335,6 +337,37 @@ func (h *DefaultHandler) user(params []string) {
 	h.c.U.Name = params[0]
 	h.c.U.FullName = params[3]
 	h.checkHandshake()
+}
+
+// http://chi.cs.uchicago.edu/chirc/assignment3.html#who
+// Only channels at the moment
+func (h *DefaultHandler) who(params []string) {
+	if len(params) < 1 {
+		h.c.SendError(NewError(ErrNeedMoreParams, WhoCmd))
+		return
+	}
+	chname := params[0]
+	ch, err := h.s.Chan(chname)
+	if err != nil {
+		h.c.SendError(err)
+		return
+	}
+	members := ch.Members()
+	for _, member := range members {
+		avail := "H"
+		op := ""
+		prefix := ch.modes.UserPrefix(member.U.ID)
+		params := []string{
+			ch.name,
+			member.U.Name,
+			member.U.Host,
+			h.c.ServerName, // FIXME
+			member.U.Nick,
+			avail + op + prefix,
+			"0 " + member.U.FullName,
+		}
+		h.c.Reply(RplWhoReply, params...)
+	}
 }
 
 // ===============
