@@ -1,6 +1,7 @@
 package fntest
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/blackchip-org/chatty/internal/tester"
@@ -107,12 +108,6 @@ func TestTopicClear(t *testing.T) {
 	c.WaitFor(irc.TopicCmd)
 
 	c.Send("TOPIC #gotham")
-	//c.WaitFor(irc.RplNoTopic)
-	/*
-		if tester.RealServer {
-			c.WaitFor("333") // RPL_TOPICWHOTIME
-		}
-	*/
 	have := c.Recv()
 	want := ":irc.localhost 331 Batman #gotham :No topic is set."
 	if want != have {
@@ -180,6 +175,27 @@ func TestQuit(t *testing.T) {
 	c2.Send("NAMES #gotham")
 	have = c2.Recv()
 	want := ":irc.localhost 353 Robin = #gotham :Robin"
+	if want != have {
+		t.Fatalf("\n want: %v \n have: %v", want, have)
+	}
+}
+
+func TestWho(t *testing.T) {
+	s, c1 := tester.NewServer(t)
+	defer s.Quit()
+
+	c1.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c1.Send("WHO #gotham")
+
+	have := AnyOf(c1.Recv(), "irc.localhost", DockerIp)
+	have = strings.Replace(have, "000A ", "", 1)
+	want := ":X 352 Batman #gotham ~batman X X Batman H@ :0 Bruce Wayne"
+	if want != have {
+		t.Fatalf("\n want: %v \n have: %v", want, have)
+	}
+
+	have = c1.Recv()
+	want = ":irc.localhost 315 Batman #gotham :End of WHO list."
 	if want != have {
 		t.Fatalf("\n want: %v \n have: %v", want, have)
 	}

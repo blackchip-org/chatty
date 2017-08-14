@@ -359,7 +359,7 @@ func (h *DefaultHandler) who(params []string) {
 		prefix := ch.modes.UserPrefix(member.User.ID)
 		params := []string{
 			ch.name,
-			member.User.Name,
+			"~" + member.User.Name,
 			member.User.Host,
 			h.c.ServerName, // FIXME
 			member.User.Nick,
@@ -368,6 +368,7 @@ func (h *DefaultHandler) who(params []string) {
 		}
 		h.c.Reply(RplWhoReply, params...)
 	}
+	h.c.Reply(RplEndOfWho, ch.name)
 }
 
 // ===============
