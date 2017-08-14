@@ -61,7 +61,7 @@ func (c *Chan) Names() []string {
 	return nicks
 }
 
-func (c *Chan) Join(cli *Client, key string) *Error {
+func (c *Chan) Join(cli *Client, key string) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -83,7 +83,7 @@ func (c *Chan) Join(cli *Client, key string) *Error {
 	return nil
 }
 
-func (c *Chan) Part(src *Client, reason string) *Error {
+func (c *Chan) Part(src *Client, reason string) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -98,7 +98,7 @@ func (c *Chan) Part(src *Client, reason string) *Error {
 	return nil
 }
 
-func (c *Chan) PrivMsg(src *Client, text string) *Error {
+func (c *Chan) PrivMsg(src *Client, text string) error {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -122,7 +122,7 @@ func (c *Chan) PrivMsg(src *Client, text string) *Error {
 	return nil
 }
 
-func (c *Chan) Topic(src *Client) (string, *Error) {
+func (c *Chan) Topic(src *Client) (string, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -133,7 +133,7 @@ func (c *Chan) Topic(src *Client) (string, *Error) {
 	return c.topic, nil
 }
 
-func (c *Chan) SetTopic(src *Client, topic string) *Error {
+func (c *Chan) SetTopic(src *Client, topic string) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -162,7 +162,7 @@ func (c *Chan) Members() []*Client {
 	return members
 }
 
-func (c *Chan) Mode(src *Client) ([]Mode, *Error) {
+func (c *Chan) Mode(src *Client) ([]Mode, error) {
 	modes := make([]Mode, 0)
 	if c.modes.TopicLock {
 		modes = append(modes, Mode{
@@ -211,7 +211,7 @@ func newChanModeCmds(c *Chan, src *Client) ChanModeCmds {
 	return cmd
 }
 
-func (cmd *ChanModeCmds) Keylock(action string, key string) *Error {
+func (cmd *ChanModeCmds) Keylock(action string, key string) error {
 	c := cmd.c
 
 	// Is the action valid?
@@ -242,7 +242,7 @@ func (cmd *ChanModeCmds) Keylock(action string, key string) *Error {
 	return nil
 }
 
-func (cmd *ChanModeCmds) Limit(action string, strlimit string) *Error {
+func (cmd *ChanModeCmds) Limit(action string, strlimit string) error {
 	c := cmd.c
 
 	// Is the action valid?
@@ -279,7 +279,7 @@ func (cmd *ChanModeCmds) Limit(action string, strlimit string) *Error {
 	return nil
 }
 
-func (cmd *ChanModeCmds) Moderated(action string) *Error {
+func (cmd *ChanModeCmds) Moderated(action string) error {
 	c := cmd.c
 
 	// Is the action valid?
@@ -306,7 +306,7 @@ func (cmd *ChanModeCmds) Moderated(action string) *Error {
 	return nil
 }
 
-func (cmd *ChanModeCmds) NoExternalMsgs(action string) *Error {
+func (cmd *ChanModeCmds) NoExternalMsgs(action string) error {
 	c := cmd.c
 
 	// Is the action valid?
@@ -333,7 +333,7 @@ func (cmd *ChanModeCmds) NoExternalMsgs(action string) *Error {
 	return nil
 }
 
-func (cmd *ChanModeCmds) Oper(action string, name string) *Error {
+func (cmd *ChanModeCmds) Oper(action string, name string) error {
 	c := cmd.c
 
 	// Is the action valid?
@@ -378,7 +378,7 @@ func (cmd *ChanModeCmds) Oper(action string, name string) *Error {
 	return nil
 }
 
-func (cmd *ChanModeCmds) TopicLock(action string) *Error {
+func (cmd *ChanModeCmds) TopicLock(action string) error {
 	c := cmd.c
 
 	// Is the action valid?
@@ -405,7 +405,7 @@ func (cmd *ChanModeCmds) TopicLock(action string) *Error {
 	return nil
 }
 
-func (cmd *ChanModeCmds) Voice(action string, name string) *Error {
+func (cmd *ChanModeCmds) Voice(action string, name string) error {
 	c := cmd.c
 
 	// Is the action valid?

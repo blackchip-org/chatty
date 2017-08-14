@@ -62,12 +62,28 @@ func (c *Client) Relay(o Origin, cmd string, params ...string) *Client {
 	return c
 }
 
-func (c *Client) SendError(err *Error) *Client {
+func (c *Client) SendError(err error) *Client {
+	var numeric string
+	var params []string
+
+	if ircErr, ok := err.(*Error); ok {
+		numeric = ircErr.Numeric
+		params = ircErr.Params
+	} else {
+		numeric = "000"
+		params = []string{err.Error()}
+	}
+
 	nick := "*"
 	if c.User.Nick != "" {
 		nick = c.User.Nick
 	}
-	m := Message{Prefix: c.ServerName, Target: nick, Cmd: err.Numeric, Params: err.Params}
+	m := Message{
+		Prefix: c.ServerName,
+		Target: nick,
+		Cmd:    numeric,
+		Params: params,
+	}
 	c.SendMessage(m)
 	return c
 }

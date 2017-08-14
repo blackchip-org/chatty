@@ -161,7 +161,7 @@ func (h *DefaultHandler) modeChan(params []string) {
 	requests := parseChanModes(params)
 	cmds := ch.SetMode(h.c)
 	for _, req := range requests {
-		var err *Error
+		var err error
 		switch req.Char {
 		case ChanModeKeylock:
 			err = cmds.Keylock(req.Action, req.Param)
@@ -200,7 +200,7 @@ func (h *DefaultHandler) modeUser(params []string) {
 	requests := parseUserModes(params[1:])
 	cmds := h.s.Mode(h.c)
 	for _, req := range requests {
-		var err *Error
+		var err error
 		switch req.Char {
 		case UserModeInvisible:
 			err = cmds.Invisible(req.Action)

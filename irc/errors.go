@@ -11,7 +11,7 @@ func (e Error) Error() string {
 	return strings.Join(e.Params, " ")
 }
 
-func NewError(numeric string, params ...string) *Error {
+func NewError(numeric string, params ...string) error {
 	if text, ok := ErrorText[numeric]; ok {
 		params = append(params, text)
 	}

@@ -30,7 +30,7 @@ func (s *Service) Origin() string {
 	return s.Name
 }
 
-func (s *Service) Chan(name string) (*Chan, *Error) {
+func (s *Service) Chan(name string) (*Chan, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	ch, exists := s.chans[name]
@@ -48,7 +48,7 @@ func (s *Service) Login(c *Client) {
 
 // ==== Commands
 
-func (s *Service) Join(c *Client, name string, key string) (*Chan, *Error) {
+func (s *Service) Join(c *Client, name string, key string) (*Chan, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	ch, exists := s.chans[name]
@@ -68,7 +68,7 @@ func (s *Service) Mode(src *Client) *UserModeCmds {
 	return newUserModeCmds(s, src)
 }
 
-func (s *Service) Nick(c *Client, nick string) *Error {
+func (s *Service) Nick(c *Client, nick string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	if ok := s.nicks.Register(nick, c.User); !ok {
@@ -77,7 +77,7 @@ func (s *Service) Nick(c *Client, nick string) *Error {
 	return nil
 }
 
-func (s *Service) Part(c *Client, name string, reason string) *Error {
+func (s *Service) Part(c *Client, name string, reason string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	ch, exists := s.chans[name]
@@ -92,7 +92,7 @@ func (s *Service) Part(c *Client, name string, reason string) *Error {
 	return nil
 }
 
-func (s *Service) PrivMsg(src *Client, dest string, text string) *Error {
+func (s *Service) PrivMsg(src *Client, dest string, text string) error {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	if strings.HasPrefix(dest, "#") {
@@ -145,7 +145,7 @@ func newUserModeCmds(s *Service, src *Client) *UserModeCmds {
 	return cmd
 }
 
-func (cmd *UserModeCmds) Invisible(action string) *Error {
+func (cmd *UserModeCmds) Invisible(action string) error {
 	s := cmd.s
 
 	// Is the action valid?
