@@ -43,7 +43,7 @@ func (s *Service) Chan(name string) (*Chan, *Error) {
 func (s *Service) Login(c *Client) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	s.modes[c.U.ID] = &UserModes{}
+	s.modes[c.User.ID] = &UserModes{}
 }
 
 // ==== Commands
@@ -71,7 +71,7 @@ func (s *Service) Mode(src *Client) *UserModeCmds {
 func (s *Service) Nick(c *Client, nick string) *Error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	if ok := s.nicks.Register(nick, c.U); !ok {
+	if ok := s.nicks.Register(nick, c.User); !ok {
 		return NewError(ErrNickNameInUse, nick)
 	}
 	return nil
@@ -112,19 +112,19 @@ func (s *Service) Quit(src *Client, reason string) {
 	for _, ch := range src.chans {
 		members := ch.Members()
 		for _, m := range members {
-			if m.U.ID == src.U.ID {
+			if m.User.ID == src.User.ID {
 				continue
 			}
-			notify[m.U.ID] = m
+			notify[m.User.ID] = m
 		}
 		ch.Quit(src)
 	}
 	for _, cli := range notify {
-		cli.Relay(src.U, QuitCmd, reason)
+		cli.Relay(src.User, QuitCmd, reason)
 	}
 	src.Quit()
-	s.nicks.Unregister(src.U)
-	delete(s.modes, src.U.ID)
+	s.nicks.Unregister(src.User)
+	delete(s.modes, src.User.ID)
 }
 
 // ===== User Modes
@@ -155,8 +155,8 @@ func (cmd *UserModeCmds) Invisible(action string) *Error {
 	set := action == "+"
 
 	// Is a mode change needed?
-	modes := s.modes[cmd.src.U.ID]
-	prev := s.modes[cmd.src.U.ID].Invisible
+	modes := s.modes[cmd.src.User.ID]
+	prev := s.modes[cmd.src.User.ID].Invisible
 	if set == prev {
 		return nil
 	}
@@ -170,9 +170,9 @@ func (cmd *UserModeCmds) Invisible(action string) *Error {
 
 func (cmd UserModeCmds) Done() {
 	if len(cmd.changes) > 0 {
-		params := append([]string{cmd.src.U.Nick}, formatModes(cmd.changes)...)
+		params := append([]string{cmd.src.User.Nick}, formatModes(cmd.changes)...)
 		m := Message{
-			Prefix: cmd.src.U.Nick,
+			Prefix: cmd.src.User.Nick,
 			Cmd:    ModeCmd,
 			Params: params,
 		}

@@ -148,7 +148,7 @@ func (h *DefaultHandler) modeChan(params []string) {
 		rparams := append([]string{ch.name}, fmodes...)
 		message := Message{
 			Prefix:   h.c.ServerName,
-			Target:   h.c.U.Nick,
+			Target:   h.c.User.Nick,
 			Cmd:      RplChannelModeIs,
 			Params:   rparams,
 			NoSpaces: true,
@@ -194,7 +194,7 @@ func (h *DefaultHandler) modeUser(params []string) {
 		return
 	}
 	nick := params[0]
-	if nick != h.c.U.Nick {
+	if nick != h.c.User.Nick {
 		h.c.SendError(NewError(ErrUsersDontMatch))
 	}
 	requests := parseUserModes(params[1:])
@@ -334,8 +334,8 @@ func (h *DefaultHandler) user(params []string) {
 		h.c.SendError(NewError(ErrNeedMoreParams, UserCmd))
 		return
 	}
-	h.c.U.Name = params[0]
-	h.c.U.FullName = params[3]
+	h.c.User.Name = params[0]
+	h.c.User.FullName = params[3]
 	h.checkHandshake()
 }
 
@@ -356,15 +356,15 @@ func (h *DefaultHandler) who(params []string) {
 	for _, member := range members {
 		avail := "H"
 		op := ""
-		prefix := ch.modes.UserPrefix(member.U.ID)
+		prefix := ch.modes.UserPrefix(member.User.ID)
 		params := []string{
 			ch.name,
-			member.U.Name,
-			member.U.Host,
+			member.User.Name,
+			member.User.Host,
 			h.c.ServerName, // FIXME
-			member.U.Nick,
+			member.User.Nick,
 			avail + op + prefix,
-			"0 " + member.U.FullName,
+			"0 " + member.User.FullName,
 		}
 		h.c.Reply(RplWhoReply, params...)
 	}
@@ -373,7 +373,7 @@ func (h *DefaultHandler) who(params []string) {
 // ===============
 
 func (h *DefaultHandler) checkHandshake() error {
-	if h.c.U.Nick != "" && h.c.U.Name != "" {
+	if h.c.User.Nick != "" && h.c.User.Name != "" {
 		h.c.SetRegistered()
 		h.s.Login(h.c)
 		h.welcome()
@@ -382,7 +382,7 @@ func (h *DefaultHandler) checkHandshake() error {
 }
 
 func (h *DefaultHandler) welcome() {
-	h.c.Reply(RplWelcome, fmt.Sprintf("Welcome to the Internet Relay Chat Network %v", h.c.U.Nick)).
+	h.c.Reply(RplWelcome, fmt.Sprintf("Welcome to the Internet Relay Chat Network %v", h.c.User.Nick)).
 		Reply(RplYourHost, fmt.Sprintf("Your host is %v running version %v", h.s.Origin(), Version)).
 		Reply(RplCreated, fmt.Sprintf("This server was started on %v", h.s.Started.Format(time.RFC1123))).
 		SendError(NewError(ErrNoMotd, "No MOTD set"))

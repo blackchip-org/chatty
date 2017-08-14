@@ -9,7 +9,7 @@ import (
 )
 
 type Client struct {
-	U          *User
+	User       *User
 	ServerName string
 	conn       net.Conn
 	mutex      sync.RWMutex
@@ -25,7 +25,7 @@ func newClientUser(conn net.Conn, server *Server) *Client {
 	realHost := hostnameFromAddr(conn.RemoteAddr().String())
 
 	c := &Client{
-		U:          newUser(host, realHost),
+		User:       newUser(host, realHost),
 		ServerName: server.Name,
 		conn:       conn,
 		sendq:      make(chan Message, queueMaxLen),
@@ -46,7 +46,12 @@ func (c *Client) Reply(cmd string, params ...string) *Client {
 	if exists {
 		params = append(params, text)
 	}
-	m := Message{Prefix: c.ServerName, Target: c.U.Nick, Cmd: cmd, Params: params}
+	m := Message{
+		Prefix: c.ServerName,
+		Target: c.User.Nick,
+		Cmd:    cmd,
+		Params: params,
+	}
 	c.SendMessage(m)
 	return c
 }
@@ -59,8 +64,8 @@ func (c *Client) Relay(o Origin, cmd string, params ...string) *Client {
 
 func (c *Client) SendError(err *Error) *Client {
 	nick := "*"
-	if c.U.Nick != "" {
-		nick = c.U.Nick
+	if c.User.Nick != "" {
+		nick = c.User.Nick
 	}
 	m := Message{Prefix: c.ServerName, Target: nick, Cmd: err.Numeric, Params: err.Params}
 	c.SendMessage(m)
