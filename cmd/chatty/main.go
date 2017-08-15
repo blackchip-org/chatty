@@ -7,23 +7,19 @@ import (
 	"github.com/blackchip-org/chatty/irc"
 )
 
-var debug bool
-var addr string
-var name string
+var s = irc.Server{}
 
 func init() {
-	flag.BoolVar(&debug, "debug", false, "enable debug")
-	flag.StringVar(&addr, "address", irc.Addr, "address to listen on")
-	flag.StringVar(&name, "name", irc.ServerName, "override the name of the server")
+	flag.StringVar(&s.Addr, "address", irc.Addr, "address to listen on")
+	flag.StringVar(&s.CertFile, "cert", "chatty.cert", "certificate file for tls")
+	flag.BoolVar(&s.Debug, "debug", false, "enable debug")
+	flag.BoolVar(&s.Insecure, "insecure", false, "use plaintext instead of tls")
+	flag.StringVar(&s.KeyFile, "key", "chatty.key", "key file for tls")
+	flag.StringVar(&s.Name, "name", irc.ServerName, "override the name of the server")
 }
 
 func main() {
 	flag.Parse()
-	s := &irc.Server{
-		Addr:  addr,
-		Debug: debug,
-		Name:  name,
-	}
 	err := s.ListenAndServe()
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
