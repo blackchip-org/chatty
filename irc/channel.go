@@ -54,14 +54,14 @@ func (c *Chan) Names() []string {
 	defer c.mutex.RUnlock()
 	nicks := make([]string, 0, len(c.clients))
 	for _, cli := range c.clients {
-		prefix := c.modes.UserPrefix(cli.U.ID)
-		nicks = append(nicks, prefix+cli.U.Nick)
+		prefix := c.modes.UserPrefix(cli.User.ID)
+		nicks = append(nicks, prefix+cli.User.Nick)
 	}
 	sort.Strings(nicks)
 	return nicks
 }
 
-func (c *Chan) Join(cli *Client, key string) *Error {
+func (c *Chan) Join(src *Client, key string) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -72,81 +72,81 @@ func (c *Chan) Join(cli *Client, key string) *Error {
 		return NewError(ErrChannelIsFull, c.name)
 	}
 	if len(c.clients) == 0 {
-		c.modes.Operators[cli.U.ID] = true
+		c.modes.Operators[src.User.ID] = true
 	}
-	c.clients[cli.U.ID] = cli
+	c.clients[src.User.ID] = src
 	names := make([]string, 0, len(c.clients))
 	for _, cli := range c.clients {
-		cli.Relay(cli.U, JoinCmd, c.name)
-		names = append(names, cli.U.Nick)
+		cli.Relay(src.User, JoinCmd, c.name)
+		names = append(names, cli.User.Nick)
 	}
 	return nil
 }
 
-func (c *Chan) Part(src *Client, reason string) *Error {
+func (c *Chan) Part(src *Client, reason string) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	_, exists := c.clients[src.U.ID]
+	_, exists := c.clients[src.User.ID]
 	if !exists {
 		return NewError(ErrNotOnChannel)
 	}
 	for _, cli := range c.clients {
-		cli.Relay(src.U, PartCmd, c.name, reason)
+		cli.Relay(src.User, PartCmd, c.name, reason)
 	}
 	c.remove(src)
 	return nil
 }
 
-func (c *Chan) PrivMsg(src *Client, text string) *Error {
+func (c *Chan) PrivMsg(src *Client, text string) error {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
-	if _, member := c.clients[src.U.ID]; c.modes.NoExternalMsgs && !member {
+	if _, member := c.clients[src.User.ID]; c.modes.NoExternalMsgs && !member {
 		return NewError(ErrCannotSendToChan, c.name)
 	}
 	if c.modes.Moderated {
-		_, oper := c.modes.Operators[src.U.ID]
-		_, voiced := c.modes.Voiced[src.U.ID]
+		_, oper := c.modes.Operators[src.User.ID]
+		_, voiced := c.modes.Voiced[src.User.ID]
 		if !oper && !voiced {
 			return NewError(ErrCannotSendToChan, c.name)
 		}
 	}
 
 	for _, cli := range c.clients {
-		if cli.U.Nick == src.U.Nick {
+		if cli.User.Nick == src.User.Nick {
 			continue
 		}
-		cli.Relay(src.U, PrivMsgCmd, c.name, text)
+		cli.Relay(src.User, PrivMsgCmd, c.name, text)
 	}
 	return nil
 }
 
-func (c *Chan) Topic(src *Client) (string, *Error) {
+func (c *Chan) Topic(src *Client) (string, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
-	if _, member := c.clients[src.U.ID]; !member {
+	if _, member := c.clients[src.User.ID]; !member {
 		return "", NewError(ErrNotOnChannel, c.name)
 	}
 
 	return c.topic, nil
 }
 
-func (c *Chan) SetTopic(src *Client, topic string) *Error {
+func (c *Chan) SetTopic(src *Client, topic string) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	if _, member := c.clients[src.U.ID]; !member {
+	if _, member := c.clients[src.User.ID]; !member {
 		return NewError(ErrNotOnChannel, c.name)
 	}
-	if _, oper := c.modes.Operators[src.U.ID]; !oper && c.modes.TopicLock {
+	if _, oper := c.modes.Operators[src.User.ID]; !oper && c.modes.TopicLock {
 		return NewError(ErrChanOpPrivsNeeded, c.name)
 	}
 
 	c.topic = topic
 	for _, client := range c.clients {
-		client.Relay(src.U, TopicCmd, c.name, c.topic)
+		client.Relay(src.User, TopicCmd, c.name, c.topic)
 	}
 	return nil
 }
@@ -162,7 +162,24 @@ func (c *Chan) Members() []*Client {
 	return members
 }
 
-func (c *Chan) Mode(src *Client) ChanModeCmds {
+func (c *Chan) Mode(src *Client) ([]Mode, error) {
+	modes := make([]Mode, 0)
+	if c.modes.TopicLock {
+		modes = append(modes, Mode{
+			Action: "+",
+			Char:   ChanModeTopicLock,
+		})
+	}
+	if c.modes.NoExternalMsgs {
+		modes = append(modes, Mode{
+			Action: "+",
+			Char:   ChanModeNoExternalMsgs,
+		})
+	}
+	return modes, nil
+}
+
+func (c *Chan) SetMode(src *Client) ChanModeCmds {
 	return newChanModeCmds(c, src)
 }
 
@@ -173,28 +190,37 @@ func (c *Chan) Quit(src *Client) {
 }
 
 func (c *Chan) remove(src *Client) {
-	delete(c.modes.Operators, src.U.ID)
-	delete(c.modes.Voiced, src.U.ID)
-	delete(c.clients, src.U.ID)
+	delete(c.modes.Operators, src.User.ID)
+	delete(c.modes.Voiced, src.User.ID)
+	delete(c.clients, src.User.ID)
 }
 
 type ChanModeCmds struct {
 	c       *Chan
 	src     *Client
-	changes []modeChange
+	changes []Mode
 }
 
 func newChanModeCmds(c *Chan, src *Client) ChanModeCmds {
 	cmd := ChanModeCmds{
 		c:       c,
 		src:     src,
-		changes: make([]modeChange, 0),
+		changes: make([]Mode, 0),
 	}
 	c.mutex.Lock()
 	return cmd
 }
 
-func (cmd *ChanModeCmds) Keylock(action string, key string) *Error {
+func (cmd *ChanModeCmds) Ban(action string, who string) error {
+	cmd.changes = append(cmd.changes, Mode{
+		Action: action,
+		Char:   ChanModeBan,
+		List:   []string{},
+	})
+	return nil
+}
+
+func (cmd *ChanModeCmds) Keylock(action string, key string) error {
 	c := cmd.c
 
 	// Is the action valid?
@@ -204,7 +230,7 @@ func (cmd *ChanModeCmds) Keylock(action string, key string) *Error {
 	set := action == "+"
 
 	// Is the user sending the command an operator?
-	if !c.modes.Operators[cmd.src.U.ID] {
+	if !c.modes.Operators[cmd.src.User.ID] {
 		return NewError(ErrChanOpPrivsNeeded, c.name)
 	}
 
@@ -217,15 +243,15 @@ func (cmd *ChanModeCmds) Keylock(action string, key string) *Error {
 	} else {
 		c.modes.Key = ""
 	}
-	cmd.changes = append(cmd.changes, modeChange{
+	cmd.changes = append(cmd.changes, Mode{
 		Action: action,
-		Mode:   ChanModeKeylock,
+		Char:   ChanModeKeylock,
 		Param:  c.modes.Key,
 	})
 	return nil
 }
 
-func (cmd *ChanModeCmds) Limit(action string, strlimit string) *Error {
+func (cmd *ChanModeCmds) Limit(action string, strlimit string) error {
 	c := cmd.c
 
 	// Is the action valid?
@@ -235,7 +261,7 @@ func (cmd *ChanModeCmds) Limit(action string, strlimit string) *Error {
 	set := action == "+"
 
 	// Is the user sending the command an operator?
-	if !c.modes.Operators[cmd.src.U.ID] {
+	if !c.modes.Operators[cmd.src.User.ID] {
 		// Real server seems to ignore instead of sending an error
 		return nil
 	}
@@ -254,15 +280,15 @@ func (cmd *ChanModeCmds) Limit(action string, strlimit string) *Error {
 		strlimit = ""
 		c.modes.Limit = 0
 	}
-	cmd.changes = append(cmd.changes, modeChange{
+	cmd.changes = append(cmd.changes, Mode{
 		Action: action,
-		Mode:   ChanModeLimit,
+		Char:   ChanModeLimit,
 		Param:  strlimit,
 	})
 	return nil
 }
 
-func (cmd *ChanModeCmds) Moderated(action string) *Error {
+func (cmd *ChanModeCmds) Moderated(action string) error {
 	c := cmd.c
 
 	// Is the action valid?
@@ -272,7 +298,7 @@ func (cmd *ChanModeCmds) Moderated(action string) *Error {
 	set := action == "+"
 
 	// Is the user sending the command an operator?
-	if !c.modes.Operators[cmd.src.U.ID] {
+	if !c.modes.Operators[cmd.src.User.ID] {
 		return NewError(ErrChanOpPrivsNeeded, c.name)
 	}
 
@@ -282,14 +308,14 @@ func (cmd *ChanModeCmds) Moderated(action string) *Error {
 	}
 
 	c.modes.Moderated = set
-	cmd.changes = append(cmd.changes, modeChange{
+	cmd.changes = append(cmd.changes, Mode{
 		Action: action,
-		Mode:   ChanModeModerated,
+		Char:   ChanModeModerated,
 	})
 	return nil
 }
 
-func (cmd *ChanModeCmds) NoExternalMsgs(action string) *Error {
+func (cmd *ChanModeCmds) NoExternalMsgs(action string) error {
 	c := cmd.c
 
 	// Is the action valid?
@@ -299,7 +325,7 @@ func (cmd *ChanModeCmds) NoExternalMsgs(action string) *Error {
 	set := action == "+"
 
 	// Is the user sending the command an operator?
-	if !c.modes.Operators[cmd.src.U.ID] {
+	if !c.modes.Operators[cmd.src.User.ID] {
 		return NewError(ErrChanOpPrivsNeeded, c.name)
 	}
 
@@ -309,14 +335,14 @@ func (cmd *ChanModeCmds) NoExternalMsgs(action string) *Error {
 	}
 
 	c.modes.NoExternalMsgs = set
-	cmd.changes = append(cmd.changes, modeChange{
+	cmd.changes = append(cmd.changes, Mode{
 		Action: action,
-		Mode:   ChanModeNoExternalMsgs,
+		Char:   ChanModeNoExternalMsgs,
 	})
 	return nil
 }
 
-func (cmd *ChanModeCmds) Oper(action string, name string) *Error {
+func (cmd *ChanModeCmds) Oper(action string, name string) error {
 	c := cmd.c
 
 	// Is the action valid?
@@ -338,30 +364,57 @@ func (cmd *ChanModeCmds) Oper(action string, name string) *Error {
 	}
 
 	// Is the user sending the command an operator?
-	if !c.modes.Operators[cmd.src.U.ID] {
+	if !c.modes.Operators[cmd.src.User.ID] {
 		return NewError(ErrChanOpPrivsNeeded, c.name)
 	}
 
 	// Is a mode change needed?
-	_, targetOps := c.modes.Operators[target.U.ID]
+	_, targetOps := c.modes.Operators[target.User.ID]
 	if set == targetOps {
 		return nil
 	}
 
 	if set {
-		c.modes.Operators[target.U.ID] = true
+		c.modes.Operators[target.User.ID] = true
 	} else {
-		delete(c.modes.Operators, target.U.ID)
+		delete(c.modes.Operators, target.User.ID)
 	}
-	cmd.changes = append(cmd.changes, modeChange{
+	cmd.changes = append(cmd.changes, Mode{
 		Action: action,
-		Mode:   ChanModeOper,
+		Char:   ChanModeOper,
 		Param:  name,
 	})
 	return nil
 }
 
-func (cmd *ChanModeCmds) Voice(action string, name string) *Error {
+func (cmd *ChanModeCmds) TopicLock(action string) error {
+	c := cmd.c
+
+	// Is the action valid?
+	if action != "+" && action != "-" {
+		return nil
+	}
+	set := action == "+"
+
+	// Is the user sending the command an operator?
+	if !c.modes.Operators[cmd.src.User.ID] {
+		return NewError(ErrChanOpPrivsNeeded, c.name)
+	}
+
+	// Is a mode change needed?
+	if set == c.modes.TopicLock {
+		return nil
+	}
+
+	c.modes.TopicLock = set
+	cmd.changes = append(cmd.changes, Mode{
+		Action: action,
+		Char:   ChanModeTopicLock,
+	})
+	return nil
+}
+
+func (cmd *ChanModeCmds) Voice(action string, name string) error {
 	c := cmd.c
 
 	// Is the action valid?
@@ -383,24 +436,24 @@ func (cmd *ChanModeCmds) Voice(action string, name string) *Error {
 	}
 
 	// Is the user sending the command an operator?
-	if !c.modes.Operators[cmd.src.U.ID] {
+	if !c.modes.Operators[cmd.src.User.ID] {
 		return NewError(ErrChanOpPrivsNeeded, c.name)
 	}
 
 	// Is a mode change needed?
-	_, exists = c.modes.Voiced[target.U.ID]
+	_, exists = c.modes.Voiced[target.User.ID]
 	if set == exists {
 		return nil
 	}
 
 	if set {
-		c.modes.Voiced[target.U.ID] = true
+		c.modes.Voiced[target.User.ID] = true
 	} else {
-		delete(c.modes.Voiced, target.U.ID)
+		delete(c.modes.Voiced, target.User.ID)
 	}
-	cmd.changes = append(cmd.changes, modeChange{
+	cmd.changes = append(cmd.changes, Mode{
 		Action: action,
-		Mode:   ChanModeVoice,
+		Char:   ChanModeVoice,
 		Param:  name,
 	})
 	return nil
@@ -409,14 +462,24 @@ func (cmd *ChanModeCmds) Voice(action string, name string) *Error {
 func (cmd ChanModeCmds) Done() {
 	if len(cmd.changes) > 0 {
 		for _, cli := range cmd.c.clients {
-			params := append([]string{cmd.c.name}, formatModeChanges(cmd.changes)...)
-			m := Message{
-				Prefix:   cmd.src.U.Origin(),
-				Cmd:      ModeCmd,
-				Params:   params,
-				NoSpaces: true,
+			params := append([]string{cmd.c.name}, formatModes(cmd.changes)...)
+			// If the only param is the channel name, there is nothing
+			// to say
+			if len(params) > 1 {
+				m := Message{
+					Prefix:   cmd.src.User.Origin(),
+					Cmd:      ModeCmd,
+					Params:   params,
+					NoSpaces: true,
+				}
+				cli.SendMessage(m)
 			}
-			cli.SendMessage(m)
+		}
+		for _, mode := range cmd.changes {
+			switch {
+			case mode.Char == ChanModeBan && mode.List != nil:
+				cmd.src.Reply(RplEndOfBanList, cmd.c.name)
+			}
 		}
 	}
 	cmd.c.mutex.Unlock()

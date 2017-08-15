@@ -68,6 +68,8 @@ func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 		h.user(cmd.Params)
 	case QuitCmd:
 		h.quit(cmd.Params)
+	case WhoCmd:
+		h.who(cmd.Params)
 	default:
 		handled = false
 		log.Printf("unhandled message: %+v", cmd)
@@ -125,21 +127,44 @@ func (h *DefaultHandler) mode(params []string) {
 }
 
 func (h *DefaultHandler) modeChan(params []string) {
-	if len(params) < 2 {
+	if len(params) < 1 {
 		h.c.SendError(NewError(ErrNeedMoreParams, ModeCmd))
 		return
 	}
-	chname, params := params[0], params[1:]
+	chname := params[0]
 	ch, err := h.s.Chan(chname)
 	if err != nil {
 		h.c.SendError(err)
 		return
 	}
-	requests := parseChanModeChanges(params)
-	cmds := ch.Mode(h.c)
+
+	if len(params) == 1 {
+		modes, err := ch.Mode(h.c)
+		if err != nil {
+			h.c.SendError(err)
+			return
+		}
+		fmodes := formatModes(modes)
+		rparams := append([]string{ch.name}, fmodes...)
+		message := Message{
+			Prefix:   h.c.ServerName,
+			Target:   h.c.User.Nick,
+			Cmd:      RplChannelModeIs,
+			Params:   rparams,
+			NoSpaces: true,
+		}
+		h.c.SendMessage(message)
+		return
+	}
+
+	params = params[1:]
+	requests := parseChanModes(params)
+	cmds := ch.SetMode(h.c)
 	for _, req := range requests {
-		var err *Error
-		switch req.Mode {
+		var err error
+		switch req.Char {
+		case ChanModeBan:
+			err = cmds.Ban(req.Action, req.Param)
 		case ChanModeKeylock:
 			err = cmds.Keylock(req.Action, req.Param)
 		case ChanModeLimit:
@@ -148,12 +173,14 @@ func (h *DefaultHandler) modeChan(params []string) {
 			err = cmds.Moderated(req.Action)
 		case ChanModeNoExternalMsgs:
 			err = cmds.NoExternalMsgs(req.Action)
+		case ChanModeTopicLock:
+			err = cmds.TopicLock(req.Action)
 		case ChanModeOper:
 			err = cmds.Oper(req.Action, req.Param)
 		case ChanModeVoice:
 			err = cmds.Voice(req.Action, req.Param)
 		default:
-			err = NewError(ErrUnknownMode, req.Mode, ch.name)
+			err = NewError(ErrUnknownMode, req.Char, ch.name)
 		}
 		if err != nil {
 			h.c.SendError(err)
@@ -169,18 +196,18 @@ func (h *DefaultHandler) modeUser(params []string) {
 		return
 	}
 	nick := params[0]
-	if nick != h.c.U.Nick {
+	if nick != h.c.User.Nick {
 		h.c.SendError(NewError(ErrUsersDontMatch))
 	}
-	requests := parseUserModeChanges(params[1:])
+	requests := parseUserModes(params[1:])
 	cmds := h.s.Mode(h.c)
 	for _, req := range requests {
-		var err *Error
-		switch req.Mode {
+		var err error
+		switch req.Char {
 		case UserModeInvisible:
 			err = cmds.Invisible(req.Action)
 		default:
-			err = NewError(ErrUnknownMode, req.Mode)
+			err = NewError(ErrUnknownMode, req.Char)
 		}
 		if err != nil {
 			h.c.SendError(err)
@@ -309,15 +336,47 @@ func (h *DefaultHandler) user(params []string) {
 		h.c.SendError(NewError(ErrNeedMoreParams, UserCmd))
 		return
 	}
-	h.c.U.Name = params[0]
-	h.c.U.FullName = params[3]
+	h.c.User.Name = params[0]
+	h.c.User.FullName = params[3]
 	h.checkHandshake()
+}
+
+// http://chi.cs.uchicago.edu/chirc/assignment3.html#who
+// Only channels at the moment
+func (h *DefaultHandler) who(params []string) {
+	if len(params) < 1 {
+		h.c.SendError(NewError(ErrNeedMoreParams, WhoCmd))
+		return
+	}
+	chname := params[0]
+	ch, err := h.s.Chan(chname)
+	if err != nil {
+		h.c.SendError(err)
+		return
+	}
+	members := ch.Members()
+	for _, member := range members {
+		avail := "H"
+		op := ""
+		prefix := ch.modes.UserPrefix(member.User.ID)
+		params := []string{
+			ch.name,
+			"~" + member.User.Name,
+			member.User.Host,
+			h.c.ServerName, // FIXME
+			member.User.Nick,
+			avail + op + prefix,
+			"0 " + member.User.FullName,
+		}
+		h.c.Reply(RplWhoReply, params...)
+	}
+	h.c.Reply(RplEndOfWho, ch.name)
 }
 
 // ===============
 
 func (h *DefaultHandler) checkHandshake() error {
-	if h.c.U.Nick != "" && h.c.U.Name != "" {
+	if h.c.User.Nick != "" && h.c.User.Name != "" {
 		h.c.SetRegistered()
 		h.s.Login(h.c)
 		h.welcome()
@@ -326,7 +385,7 @@ func (h *DefaultHandler) checkHandshake() error {
 }
 
 func (h *DefaultHandler) welcome() {
-	h.c.Reply(RplWelcome, fmt.Sprintf("Welcome to the Internet Relay Chat Network %v", h.c.U.Nick)).
+	h.c.Reply(RplWelcome, fmt.Sprintf("Welcome to the Internet Relay Chat Network %v", h.c.User.Nick)).
 		Reply(RplYourHost, fmt.Sprintf("Your host is %v running version %v", h.s.Origin(), Version)).
 		Reply(RplCreated, fmt.Sprintf("This server was started on %v", h.s.Started.Format(time.RFC1123))).
 		SendError(NewError(ErrNoMotd, "No MOTD set"))

@@ -1,5 +1,7 @@
 package irc
 
+import "strings"
+
 // https://www.alien.net.au/irc/chanmodes.html
 type ChanModes struct {
 	Bans           []string
@@ -77,59 +79,81 @@ func (c ChanModes) UserPrefix(id UserID) string {
 	return prefix
 }
 
-type modeChange struct {
+type Mode struct {
 	Action string
-	Mode   string
+	Char   string
 	Param  string
+	List   []string
 }
 
-func parseChanModeChanges(params []string) []modeChange {
-	return parseModeChanges(params, chanModesWithArgs)
+func parseChanModes(params []string) []Mode {
+	return parseModes(params, chanModesWithArgs)
 }
 
-func parseUserModeChanges(params []string) []modeChange {
-	return parseModeChanges(params, userModesWithArgs)
+func parseUserModes(params []string) []Mode {
+	return parseModes(params, userModesWithArgs)
 }
 
-func parseModeChanges(params []string, hasArg map[string]bool) []modeChange {
-	changes := make([]modeChange, 0)
+func parseModes(params []string, hasArg map[string]bool) []Mode {
+	result := make([]Mode, 0)
 	imode := 0
 	iparam := 1
 	n := len(params)
 	for imode < len(params) {
-		modes := params[imode]
+		chars := params[imode]
 		action := ""
-		for _, mode := range modes {
-			switch mode {
+		for _, char := range chars {
+			switch char {
 			case '+':
 				action = "+"
 			case '-':
 				action = "-"
 			default:
-				mc := modeChange{}
-				mc.Action = action
-				mc.Mode = string(mode)
-				actionMode := action + string(mode)
+				mode := Mode{
+					Action: action,
+					Char:   string(char),
+				}
+				actionMode := action + string(char)
 				if _, yes := hasArg[actionMode]; yes && iparam < n {
-					mc.Param = params[iparam]
+					mode.Param = params[iparam]
 					iparam++
 				}
-				changes = append(changes, mc)
+				result = append(result, mode)
 			}
 		}
 		imode = iparam
 		iparam = imode + 1
 	}
-	return changes
+	return result
 }
 
-func formatModeChanges(changes []modeChange) []string {
+func formatModes(modes []Mode) []string {
+	chars := make([]string, 0)
 	params := make([]string, 0)
-	for _, change := range changes {
-		params = append(params, change.Action+change.Mode)
-		if change.Param != "" {
-			params = append(params, change.Param)
+	action := ""
+	query := false
+	for _, mode := range modes {
+		// If this is a mode query for a list, skip as it wil be sent
+		// as separate messages later.
+		if mode.List != nil {
+			query = true
+			continue
+		}
+		if action != mode.Action {
+			action = mode.Action
+			chars = append(chars, action)
+		}
+		chars = append(chars, mode.Char)
+		if mode.Param != "" {
+			params = append(params, mode.Param)
 		}
 	}
-	return params
+	strchars := strings.Join(chars, "")
+	if strchars == "" && query {
+		return []string{}
+	}
+	if strchars == "" {
+		strchars = "+"
+	}
+	return append([]string{strchars}, params...)
 }

@@ -76,19 +76,3 @@ type Command struct {
 	Name   string
 	Params []string
 }
-
-type Error struct {
-	Numeric string
-	Params  []string
-}
-
-func (e Error) Error() string {
-	return strings.Join(e.Params, " ")
-}
-
-func NewError(numeric string, params ...string) *Error {
-	if text, ok := ErrorText[numeric]; ok {
-		params = append(params, text)
-	}
-	return &Error{Numeric: numeric, Params: params}
-}

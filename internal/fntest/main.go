@@ -10,3 +10,5 @@ func AnyOf(base string, matches ...string) string {
 	}
 	return base
 }
+
+const DockerIp = "172.17.0.1"

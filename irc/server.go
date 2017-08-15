@@ -133,11 +133,11 @@ func (s *Server) handle(conn net.Conn, debug bool) {
 
 	go func() {
 		defer cancel()
-		if err := writer(ctx, conn, cli.U, cli.sendq, debug); err != nil {
+		if err := writer(ctx, conn, cli.User, cli.sendq, debug); err != nil {
 			log.Printf("error: %v", err)
 		}
 	}()
-	if err := reader(ctx, conn, cli.U, handler, debug); err != nil {
+	if err := reader(ctx, conn, cli.User, handler, debug); err != nil {
 		log.Printf("error: %v", err)
 	}
 }

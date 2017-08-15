@@ -7,6 +7,23 @@ import (
 	"github.com/blackchip-org/chatty/irc"
 )
 
+func TestModeGet(t *testing.T) {
+	s, c1 := tester.NewServer(t)
+	defer s.Quit()
+
+	c1.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	if tester.RealServer {
+		c1.Send("MODE #gotham +tn")
+		c1.WaitFor(irc.ModeCmd)
+	}
+	c1.Send("MODE #gotham")
+	have := c1.Recv()
+	want := ":irc.localhost 324 Batman #gotham +tn"
+	if want != have {
+		t.Fatalf("\n want: %v \n have: %v", want, have)
+	}
+}
+
 // ===== Keylock
 
 func TestModeKeylockFail(t *testing.T) {
@@ -14,7 +31,6 @@ func TestModeKeylockFail(t *testing.T) {
 	defer s.Quit()
 
 	c.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
-	c.Drain()
 	c.Send("MODE #gotham +k swordfish")
 
 	c2 := s.NewClient()
@@ -220,7 +236,7 @@ func TestModeModeratedWithVoice(t *testing.T) {
 	}
 }
 
-// ==== No External Mesages
+// ==== No External Messages
 func TestModeNoExternalMsgs(t *testing.T) {
 	s, c := tester.NewServer(t)
 	defer s.Quit()
@@ -401,6 +417,49 @@ func TestModeOperNoModeChange(t *testing.T) {
 	c.WaitFor(irc.PongCmd)
 	if c.Err() != nil {
 		t.Errorf("\n want: no error \n have: %v", c.Err())
+	}
+}
+
+// ==== Topic Lock
+
+func TestTopicLock(t *testing.T) {
+	s, c1 := tester.NewServer(t)
+	defer s.Quit()
+	c2 := s.NewClient()
+
+	c1.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c2.Login("Joker", "joker 0 * :The Joker").Join("#gotham")
+
+	if tester.RealServer {
+		c1.Send("MODE #gotham +t")
+		c1.WaitFor(irc.ModeCmd)
+	}
+	c2.Send("TOPIC #gotham :Ha ha ha")
+	c2.WaitFor(irc.ErrChanOpPrivsNeeded)
+	if c2.Err() != nil {
+		t.Errorf("unexpected error: %v", c2.Err())
+	}
+}
+
+func TestTopicUnlock(t *testing.T) {
+	s, c1 := tester.NewServer(t)
+	defer s.Quit()
+	c2 := s.NewClient()
+
+	c1.Login("Batman", "batman 0 * :Bruce Wayne").Join("#gotham")
+	c2.Login("Joker", "joker 0 * :The Joker").Join("#gotham")
+
+	if tester.RealServer {
+		c1.Send("MODE #gotham +t")
+		c1.WaitFor(irc.ModeCmd)
+	}
+	c1.Send("MODE #gotham -t")
+	c1.WaitFor(irc.ModeCmd)
+
+	c2.Send("TOPIC #gotham :Ha ha ha")
+	c2.WaitFor(irc.TopicCmd)
+	if c2.Err() != nil {
+		t.Errorf("unexpected error: %v", c2.Err())
 	}
 }
 

@@ -30,7 +30,7 @@ func (s *Service) Origin() string {
 	return s.Name
 }
 
-func (s *Service) Chan(name string) (*Chan, *Error) {
+func (s *Service) Chan(name string) (*Chan, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	ch, exists := s.chans[name]
@@ -43,12 +43,12 @@ func (s *Service) Chan(name string) (*Chan, *Error) {
 func (s *Service) Login(c *Client) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	s.modes[c.U.ID] = &UserModes{}
+	s.modes[c.User.ID] = &UserModes{}
 }
 
 // ==== Commands
 
-func (s *Service) Join(c *Client, name string, key string) (*Chan, *Error) {
+func (s *Service) Join(c *Client, name string, key string) (*Chan, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	ch, exists := s.chans[name]
@@ -68,16 +68,16 @@ func (s *Service) Mode(src *Client) *UserModeCmds {
 	return newUserModeCmds(s, src)
 }
 
-func (s *Service) Nick(c *Client, nick string) *Error {
+func (s *Service) Nick(c *Client, nick string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	if ok := s.nicks.Register(nick, c.U); !ok {
+	if ok := s.nicks.Register(nick, c.User); !ok {
 		return NewError(ErrNickNameInUse, nick)
 	}
 	return nil
 }
 
-func (s *Service) Part(c *Client, name string, reason string) *Error {
+func (s *Service) Part(c *Client, name string, reason string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	ch, exists := s.chans[name]
@@ -92,7 +92,7 @@ func (s *Service) Part(c *Client, name string, reason string) *Error {
 	return nil
 }
 
-func (s *Service) PrivMsg(src *Client, dest string, text string) *Error {
+func (s *Service) PrivMsg(src *Client, dest string, text string) error {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	if strings.HasPrefix(dest, "#") {
@@ -112,19 +112,19 @@ func (s *Service) Quit(src *Client, reason string) {
 	for _, ch := range src.chans {
 		members := ch.Members()
 		for _, m := range members {
-			if m.U.ID == src.U.ID {
+			if m.User.ID == src.User.ID {
 				continue
 			}
-			notify[m.U.ID] = m
+			notify[m.User.ID] = m
 		}
 		ch.Quit(src)
 	}
 	for _, cli := range notify {
-		cli.Relay(src.U, QuitCmd, reason)
+		cli.Relay(src.User, QuitCmd, reason)
 	}
 	src.Quit()
-	s.nicks.Unregister(src.U)
-	delete(s.modes, src.U.ID)
+	s.nicks.Unregister(src.User)
+	delete(s.modes, src.User.ID)
 }
 
 // ===== User Modes
@@ -132,20 +132,20 @@ func (s *Service) Quit(src *Client, reason string) {
 type UserModeCmds struct {
 	s       *Service
 	src     *Client
-	changes []modeChange
+	changes []Mode
 }
 
 func newUserModeCmds(s *Service, src *Client) *UserModeCmds {
 	cmd := &UserModeCmds{
 		s:       s,
 		src:     src,
-		changes: make([]modeChange, 0),
+		changes: make([]Mode, 0),
 	}
 	s.mutex.Lock()
 	return cmd
 }
 
-func (cmd *UserModeCmds) Invisible(action string) *Error {
+func (cmd *UserModeCmds) Invisible(action string) error {
 	s := cmd.s
 
 	// Is the action valid?
@@ -155,24 +155,24 @@ func (cmd *UserModeCmds) Invisible(action string) *Error {
 	set := action == "+"
 
 	// Is a mode change needed?
-	modes := s.modes[cmd.src.U.ID]
-	prev := s.modes[cmd.src.U.ID].Invisible
+	modes := s.modes[cmd.src.User.ID]
+	prev := s.modes[cmd.src.User.ID].Invisible
 	if set == prev {
 		return nil
 	}
 	modes.Invisible = set
-	cmd.changes = append(cmd.changes, modeChange{
+	cmd.changes = append(cmd.changes, Mode{
 		Action: action,
-		Mode:   UserModeInvisible,
+		Char:   UserModeInvisible,
 	})
 	return nil
 }
 
 func (cmd UserModeCmds) Done() {
 	if len(cmd.changes) > 0 {
-		params := append([]string{cmd.src.U.Nick}, formatModeChanges(cmd.changes)...)
+		params := append([]string{cmd.src.User.Nick}, formatModes(cmd.changes)...)
 		m := Message{
-			Prefix: cmd.src.U.Nick,
+			Prefix: cmd.src.User.Nick,
 			Cmd:    ModeCmd,
 			Params: params,
 		}
