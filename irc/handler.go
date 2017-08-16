@@ -5,6 +5,8 @@ import (
 	"log"
 	"strings"
 	"time"
+
+	"github.com/boltdb/bolt"
 )
 
 type Handler interface {
@@ -262,6 +264,11 @@ func (h *DefaultHandler) pass(params []string) {
 		h.c.SendError(NewError(ErrAlreadyRegistered))
 		return
 	}
+	if len(params) == 0 {
+		h.c.SendError(NewError(ErrNeedMoreParams, PingCmd))
+		return
+	}
+	h.c.password = params[0]
 }
 
 func (h *DefaultHandler) ping(params []string) {
@@ -374,9 +381,21 @@ func (h *DefaultHandler) who(params []string) {
 
 func (h *DefaultHandler) checkHandshake() error {
 	if h.c.User.Nick != "" && h.c.User.Name != "" {
-		h.c.SetRegistered()
-		h.s.Login(h.c)
-		h.welcome()
+		err := h.s.db.View(func(tx *bolt.Tx) error {
+			bpass := tx.Bucket([]byte("config")).Get([]byte("password"))
+			if bpass != nil {
+				pass := string(bpass)
+				if pass != h.c.password {
+					h.c.SendError(NewError(ErrPasswordMismatch))
+					return nil
+				}
+			}
+			h.c.SetRegistered()
+			h.s.Login(h.c)
+			h.welcome()
+			return nil
+		})
+		return err
 	}
 	return nil
 }

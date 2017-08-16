@@ -17,7 +17,8 @@ type Client struct {
 	registered bool
 	sendq      chan Message
 
-	chans map[string]*Chan
+	password string
+	chans    map[string]*Chan
 }
 
 func newClientUser(conn net.Conn, server *Server) *Client {

@@ -5,24 +5,6 @@ import (
 	"strings"
 )
 
-var Quit = errors.New("quit")
-
-type Error struct {
-	Numeric string
-	Params  []string
-}
-
-func (e Error) Error() string {
-	return strings.Join(e.Params, " ")
-}
-
-func NewError(numeric string, params ...string) error {
-	if text, ok := ErrorText[numeric]; ok {
-		params = append(params, text)
-	}
-	return &Error{Numeric: numeric, Params: params}
-}
-
 const (
 	ErrAlreadyRegistered = "462"
 	ErrBadChannelKey     = "475"
@@ -38,6 +20,7 @@ const (
 	ErrNoSuchNick        = "401"
 	ErrNotOnChannel      = "442"
 	ErrNotRegistered     = "451"
+	ErrPasswordMismatch  = "464"
 	ErrUModeUnknownFlag  = "501"
 	ErrUnknownMode       = "472"
 	ErrUsersDontMatch    = "502"
@@ -57,7 +40,26 @@ var ErrorText = map[string]string{
 	ErrNoSuchNick:        "No such nick/channel",
 	ErrNotOnChannel:      "You're not on that channel",
 	ErrNotRegistered:     "You have not registered",
+	ErrPasswordMismatch:  "Password incorrect",
 	ErrUModeUnknownFlag:  "Unknown MODE flag",
 	ErrUnknownMode:       "is unknown mode char to me",
 	ErrUsersDontMatch:    "Cannot change mode for other users",
+}
+
+var Quit = errors.New("quit")
+
+type Error struct {
+	Numeric string
+	Params  []string
+}
+
+func (e Error) Error() string {
+	return strings.Join(e.Params, " ")
+}
+
+func NewError(numeric string, params ...string) error {
+	if text, ok := ErrorText[numeric]; ok {
+		params = append(params, text)
+	}
+	return &Error{Numeric: numeric, Params: params}
 }

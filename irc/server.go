@@ -10,6 +10,8 @@ import (
 	"net"
 	"os"
 	"time"
+
+	"github.com/boltdb/bolt"
 )
 
 const (
@@ -34,15 +36,15 @@ type Origin interface {
 
 const queueMaxLen = 10
 
-//var quit = errors.New("QUIT")
-
 type Server struct {
-	Name     string
-	Addr     string
-	Debug    bool
-	Insecure bool
-	CertFile string
-	KeyFile  string
+	Name       string
+	Addr       string
+	Debug      bool
+	Insecure   bool
+	CertFile   string
+	KeyFile    string
+	DataFile   string
+	NoAutoInit bool
 
 	NewHandlerFunc       NewHandlerFunc
 	RegistrationDeadline time.Duration
@@ -66,20 +68,16 @@ func (s *Server) ListenAndServe() error {
 	if int(s.RegistrationDeadline) == 0 {
 		s.RegistrationDeadline = 10 * time.Second
 	}
-	s.service = newService(s.Name)
-	s.quit = make(chan bool)
 
-	listener, err := net.Listen("tcp", s.Addr)
+	boltOpts := bolt.Options{Timeout: 5 * time.Second}
+	db, err := bolt.Open(s.DataFile, 0600, &boltOpts)
 	if err != nil {
-		return fmt.Errorf("unable to start server: %v", err)
+		return fmt.Errorf("unable to open database %v: %v", s.DataFile, err)
 	}
+	defer db.Close()
 
-	go func() {
-		s.running = true
-		<-s.quit
-		s.quitting = true
-		listener.Close()
-	}()
+	s.service = newService(s.Name, db)
+	s.quit = make(chan bool)
 
 	var config tls.Config
 	if !s.Insecure {
@@ -91,6 +89,22 @@ func (s *Server) ListenAndServe() error {
 			Certificates: []tls.Certificate{cert},
 		}
 	}
+
+	listener, err := net.Listen("tcp", s.Addr)
+	if err != nil {
+		return fmt.Errorf("unable to start server: %v", err)
+	}
+
+	if err := s.init(db); err != nil {
+		return err
+	}
+
+	go func() {
+		s.running = true
+		<-s.quit
+		s.quitting = true
+		listener.Close()
+	}()
 
 	for {
 		conn, err := listener.Accept()
@@ -183,4 +197,25 @@ func writer(ctx context.Context, conn net.Conn, o Origin, sendq <-chan Message, 
 			return nil
 		}
 	}
+}
+
+func (s *Server) init(db *bolt.DB) error {
+	err := db.Update(func(tx *bolt.Tx) error {
+		config := tx.Bucket([]byte("config"))
+		if config != nil {
+			return nil
+		}
+		config, err := tx.CreateBucket([]byte("config"))
+		if err != nil {
+			return err
+		}
+		if s.NoAutoInit {
+			return nil
+		}
+		password := "swordfish"
+		config.Put([]byte("password"), []byte(password))
+		fmt.Printf("server password is: %v\n", password)
+		return nil
+	})
+	return err
 }

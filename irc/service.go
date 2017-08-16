@@ -4,21 +4,25 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/boltdb/bolt"
 )
 
 type Service struct {
 	Name    string
 	Started time.Time
+	db      *bolt.DB
 	mutex   sync.RWMutex
 	chans   map[string]*Chan
 	nicks   *Nicks
 	modes   map[UserID]*UserModes
 }
 
-func newService(name string) *Service {
+func newService(name string, db *bolt.DB) *Service {
 	s := &Service{
 		Name:    name,
 		Started: time.Now(),
+		db:      db,
 		chans:   make(map[string]*Chan),
 		nicks:   NewNicks(),
 		modes:   make(map[UserID]*UserModes),
