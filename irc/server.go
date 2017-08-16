@@ -3,6 +3,7 @@ package irc
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
@@ -16,7 +17,7 @@ const (
 )
 
 var (
-	Addr       = ":6667"
+	Addr       = ":6697"
 	ServerName = "localhost"
 )
 
@@ -36,9 +37,13 @@ const queueMaxLen = 10
 //var quit = errors.New("QUIT")
 
 type Server struct {
-	Name                 string
-	Addr                 string
-	Debug                bool
+	Name     string
+	Addr     string
+	Debug    bool
+	Insecure bool
+	CertFile string
+	KeyFile  string
+
 	NewHandlerFunc       NewHandlerFunc
 	RegistrationDeadline time.Duration
 
@@ -76,6 +81,17 @@ func (s *Server) ListenAndServe() error {
 		listener.Close()
 	}()
 
+	var config tls.Config
+	if !s.Insecure {
+		cert, err := tls.LoadX509KeyPair(s.CertFile, s.KeyFile)
+		if err != nil {
+			return fmt.Errorf("certificate error: %v", err)
+		}
+		config = tls.Config{
+			Certificates: []tls.Certificate{cert},
+		}
+	}
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -85,8 +101,14 @@ func (s *Server) ListenAndServe() error {
 			return err
 		}
 		go func() {
-			defer conn.Close()
-			s.handle(conn, s.Debug)
+			if s.Insecure {
+				defer conn.Close()
+				s.handle(conn, s.Debug)
+				return
+			}
+			tconn := tls.Server(conn, &config)
+			defer tconn.Close()
+			s.handle(tconn, s.Debug)
 		}()
 	}
 }
