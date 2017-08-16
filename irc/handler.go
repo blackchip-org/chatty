@@ -8,7 +8,7 @@ import (
 )
 
 type Handler interface {
-	Handle(Command) (bool, error)
+	Handle(Command) error
 }
 
 type NewHandlerFunc func(*Service, *Client) Handler
@@ -32,14 +32,12 @@ var prereg = map[string]bool{
 	CapCmd:  true,
 }
 
-func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
-	handled := true
-
+func (h *DefaultHandler) Handle(cmd Command) error {
 	if !h.c.registered {
 		allowed := prereg[cmd.Name]
 		if !allowed {
 			h.c.SendError(NewError(ErrNotRegistered))
-			return true, nil
+			return h.c.err
 		}
 	}
 
@@ -71,10 +69,9 @@ func (h *DefaultHandler) Handle(cmd Command) (bool, error) {
 	case WhoCmd:
 		h.who(cmd.Params)
 	default:
-		handled = false
 		log.Printf("unhandled message: %+v", cmd)
 	}
-	return handled, h.c.err
+	return h.c.err
 }
 
 func (h *DefaultHandler) cap(params []string) {

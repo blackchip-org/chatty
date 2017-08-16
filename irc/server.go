@@ -3,7 +3,6 @@ package irc
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -34,7 +33,7 @@ type Origin interface {
 
 const queueMaxLen = 10
 
-var quit = errors.New("QUIT")
+//var quit = errors.New("QUIT")
 
 type Server struct {
 	Name                 string
@@ -133,8 +132,8 @@ func reader(ctx context.Context, conn net.Conn, o Origin, handler Handler, debug
 			log.Printf(" -> [%v] %v", o.Origin(), line)
 		}
 		m := DecodeMessage(line)
-		if _, err := handler.Handle(Command{Name: m.Cmd, Params: m.Params}); err != nil {
-			if err == quit {
+		if err := handler.Handle(Command{Name: m.Cmd, Params: m.Params}); err != nil {
+			if err == Quit {
 				return nil
 			}
 			log.Printf("error: %v", err)

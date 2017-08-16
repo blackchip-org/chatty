@@ -1,6 +1,11 @@
 package irc
 
-import "strings"
+import (
+	"errors"
+	"strings"
+)
+
+var Quit = errors.New("quit")
 
 type Error struct {
 	Numeric string

@@ -106,7 +106,7 @@ func (c *Client) SendMessage(m Message) {
 }
 
 func (c *Client) Quit() {
-	c.err = quit
+	c.err = Quit
 }
 
 func hostnameFromAddr(addr string) string {
