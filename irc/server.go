@@ -37,14 +37,11 @@ type Origin interface {
 const queueMaxLen = 10
 
 type Server struct {
-	Name       string
-	Addr       string
-	Debug      bool
-	Insecure   bool
-	CertFile   string
-	KeyFile    string
-	DataFile   string
-	NoAutoInit bool
+	Name     string
+	Addr     string
+	Debug    bool
+	Insecure bool
+	DataFile string
 
 	NewHandlerFunc       NewHandlerFunc
 	RegistrationDeadline time.Duration
@@ -76,27 +73,42 @@ func (s *Server) ListenAndServe() error {
 	}
 	defer db.Close()
 
+	err = db.Update(func(tx *bolt.Tx) error {
+		for _, bucket := range Buckets {
+			tx.CreateBucketIfNotExists(bucket)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("unable to initialize database %v: %v", s.DataFile, err)
+	}
+
 	s.service = newService(s.Name, db)
 	s.quit = make(chan bool)
 
-	var config tls.Config
+	var tlsConfig tls.Config
 	if !s.Insecure {
-		cert, err := tls.LoadX509KeyPair(s.CertFile, s.KeyFile)
+		err := db.View(func(tx *bolt.Tx) error {
+			config := tx.Bucket(BucketConfig)
+			certPem := config.Get(ConfigCert)
+			keyPem := config.Get(ConfigKey)
+			cert, err := tls.X509KeyPair(certPem, keyPem)
+			if err != nil {
+				return fmt.Errorf("unable to load certificate: %v", err)
+			}
+			tlsConfig = tls.Config{
+				Certificates: []tls.Certificate{cert},
+			}
+			return nil
+		})
 		if err != nil {
-			return fmt.Errorf("certificate error: %v", err)
-		}
-		config = tls.Config{
-			Certificates: []tls.Certificate{cert},
+			return fmt.Errorf("unable to load certificate: %v", err)
 		}
 	}
 
 	listener, err := net.Listen("tcp", s.Addr)
 	if err != nil {
 		return fmt.Errorf("unable to start server: %v", err)
-	}
-
-	if err := s.init(db); err != nil {
-		return err
 	}
 
 	go func() {
@@ -120,7 +132,7 @@ func (s *Server) ListenAndServe() error {
 				s.handle(conn, s.Debug)
 				return
 			}
-			tconn := tls.Server(conn, &config)
+			tconn := tls.Server(conn, &tlsConfig)
 			defer tconn.Close()
 			s.handle(tconn, s.Debug)
 		}()
@@ -197,25 +209,4 @@ func writer(ctx context.Context, conn net.Conn, o Origin, sendq <-chan Message, 
 			return nil
 		}
 	}
-}
-
-func (s *Server) init(db *bolt.DB) error {
-	err := db.Update(func(tx *bolt.Tx) error {
-		config := tx.Bucket([]byte("config"))
-		if config != nil {
-			return nil
-		}
-		config, err := tx.CreateBucket([]byte("config"))
-		if err != nil {
-			return err
-		}
-		if s.NoAutoInit {
-			return nil
-		}
-		password := "swordfish"
-		config.Put([]byte("password"), []byte(password))
-		fmt.Printf("server password is: %v\n", password)
-		return nil
-	})
-	return err
 }

@@ -1,11 +1,14 @@
 package irc
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
 	"time"
 
+	"github.com/blackchip-org/chatty/internal/passwd"
 	"github.com/boltdb/bolt"
 )
 
@@ -381,23 +384,34 @@ func (h *DefaultHandler) who(params []string) {
 
 func (h *DefaultHandler) checkHandshake() error {
 	if h.c.User.Nick != "" && h.c.User.Name != "" {
-		err := h.s.db.View(func(tx *bolt.Tx) error {
-			bpass := tx.Bucket([]byte("config")).Get([]byte("password"))
-			if bpass != nil {
-				pass := string(bpass)
-				if pass != h.c.password {
-					h.c.SendError(NewError(ErrPasswordMismatch))
-					return nil
-				}
-			}
-			h.c.SetRegistered()
-			h.s.Login(h.c)
-			h.welcome()
-			return nil
-		})
-		return err
+		if err := h.canRegister(); err != nil {
+			return err
+		}
+		h.c.SetRegistered()
+		h.s.Login(h.c)
+		h.welcome()
+		return nil
 	}
 	return nil
+}
+
+func (h *DefaultHandler) canRegister() error {
+	err := h.s.db.View(func(tx *bolt.Tx) error {
+		bpass := tx.Bucket(BucketConfig).Get(ConfigPass)
+		if bpass == nil {
+			return nil
+		}
+		bsalt := tx.Bucket(BucketConfig).Get(ConfigSalt)
+		if bsalt == nil {
+			return errors.New("no salt")
+		}
+		if !bytes.Equal(bpass, passwd.Encode([]byte(h.c.password), bsalt)) {
+			h.c.SendError(NewError(ErrPasswordMismatch))
+			return errors.New("invalid password")
+		}
+		return nil
+	})
+	return err
 }
 
 func (h *DefaultHandler) welcome() {

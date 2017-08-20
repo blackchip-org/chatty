@@ -59,11 +59,10 @@ func NewServer(t *testing.T) (*Server, *Client) {
 	}
 	ts := &Server{
 		server: &irc.Server{
-			Name:       "irc.localhost",
-			Addr:       addr,
-			Insecure:   true,
-			DataFile:   "fntests.db",
-			NoAutoInit: true,
+			Name:     "irc.localhost",
+			Addr:     addr,
+			Insecure: true,
+			DataFile: "fntests.db",
 		},
 		clients:   make([]*Client, 0),
 		t:         t,
