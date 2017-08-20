@@ -88,7 +88,7 @@ func NewServer(t *testing.T) (*Server, *Client) {
 			}
 		}()
 	} else {
-		out, err := exec.Command("docker", "start", "irc-test").CombinedOutput()
+		out, err := exec.Command("docker", "start", "ircd").CombinedOutput()
 		if err != nil {
 			t.Fatalf("unable to start docker container:\n%v", string(out))
 		}
@@ -136,7 +136,7 @@ func (s *Server) Quit() {
 	}
 	s.server.Quit()
 	if RealServer {
-		out, err := exec.Command("docker", "kill", "irc-test").CombinedOutput()
+		out, err := exec.Command("docker", "kill", "ircd").CombinedOutput()
 		if err != nil {
 			s.t.Errorf("error stopping docker instance: \n%v", string(out))
 		}
