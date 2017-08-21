@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -48,6 +49,7 @@ type Server struct {
 
 	service  *Service
 	running  bool
+	wg       sync.WaitGroup
 	quit     chan bool
 	quitting bool
 }
@@ -134,6 +136,8 @@ func (s *Server) ListenAndServe() error {
 		}
 		go func() {
 			log.Printf("[%v] connection established", conn.RemoteAddr())
+			s.wg.Add(1)
+			defer s.wg.Done()
 
 			var err error
 			if s.Insecure {
@@ -161,6 +165,7 @@ func (s *Server) Quit() {
 	if s.running {
 		s.quit <- true
 	}
+	s.wg.Wait()
 }
 
 func (s *Server) handle(conn net.Conn, debug bool) error {
