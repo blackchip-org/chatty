@@ -111,6 +111,12 @@ func (s *Server) ListenAndServe() error {
 		return fmt.Errorf("unable to start server: %v", err)
 	}
 
+	secureMsg := "insecure"
+	if !s.Insecure {
+		secureMsg = "secure"
+	}
+	log.Printf("%v listening on %v (%v)", s.Name, s.Addr, secureMsg)
+
 	go func() {
 		s.running = true
 		<-s.quit
@@ -127,14 +133,22 @@ func (s *Server) ListenAndServe() error {
 			return err
 		}
 		go func() {
+			log.Printf("[%v] connection established", conn.RemoteAddr())
+
+			var err error
 			if s.Insecure {
 				defer conn.Close()
-				s.handle(conn, s.Debug)
-				return
+				err = s.handle(conn, s.Debug)
+			} else {
+				tconn := tls.Server(conn, &tlsConfig)
+				defer tconn.Close()
+				err = s.handle(tconn, s.Debug)
 			}
-			tconn := tls.Server(conn, &tlsConfig)
-			defer tconn.Close()
-			s.handle(tconn, s.Debug)
+			if err != nil {
+				log.Printf("[%v] error: %v", conn.RemoteAddr(), err)
+			} else {
+				log.Printf("[%v] connection closed by remote host", conn.RemoteAddr())
+			}
 		}()
 	}
 }
@@ -149,7 +163,7 @@ func (s *Server) Quit() {
 	}
 }
 
-func (s *Server) handle(conn net.Conn, debug bool) {
+func (s *Server) handle(conn net.Conn, debug bool) error {
 	cli := newClientUser(conn, s)
 	handler := s.NewHandlerFunc(s.service, cli)
 
@@ -159,12 +173,13 @@ func (s *Server) handle(conn net.Conn, debug bool) {
 	go func() {
 		defer cancel()
 		if err := writer(ctx, conn, cli.User, cli.sendq, debug); err != nil {
-			log.Printf("error: %v", err)
+			log.Printf("[%v] %v", conn.RemoteAddr(), err)
 		}
 	}()
 	if err := reader(ctx, conn, cli.User, handler, debug); err != nil {
-		log.Printf("error: %v", err)
+		return err
 	}
+	return nil
 }
 
 func reader(ctx context.Context, conn net.Conn, o Origin, handler Handler, debug bool) error {

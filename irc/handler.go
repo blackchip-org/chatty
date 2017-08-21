@@ -415,6 +415,7 @@ func (h *DefaultHandler) canRegister() error {
 }
 
 func (h *DefaultHandler) welcome() {
+	log.Printf("[%v] is %v", h.c.conn.RemoteAddr(), h.c.User.Nick)
 	h.c.Reply(RplWelcome, fmt.Sprintf("Welcome to the Internet Relay Chat Network %v", h.c.User.Nick)).
 		Reply(RplYourHost, fmt.Sprintf("Your host is %v running version %v", h.s.Origin(), Version)).
 		Reply(RplCreated, fmt.Sprintf("This server was started on %v", h.s.Started.Format(time.RFC1123))).
