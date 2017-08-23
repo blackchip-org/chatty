@@ -74,7 +74,6 @@ func (s *Server) ListenAndServe() error {
 		return fmt.Errorf("unable to open database %v: %v", s.DataFile, err)
 	}
 	defer db.Close()
-
 	err = db.Update(func(tx *bolt.Tx) error {
 		for _, bucket := range Buckets {
 			tx.CreateBucketIfNotExists(bucket)

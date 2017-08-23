@@ -1,32 +1,28 @@
 package main
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
 	"flag"
 	"fmt"
-	"math/big"
-	"net"
 	"os"
 	"time"
 
-	"github.com/blackchip-org/chatty/internal/passwd"
+	"github.com/blackchip-org/chatty/internal/security"
 	"github.com/blackchip-org/chatty/irc"
 	"github.com/boltdb/bolt"
 )
 
 var (
-	dataFile string
+	dataFile   string
+	noPassword bool
 )
 
 func init() {
 	flag.StringVar(&dataFile, "data", "chatty.data", "create this file as the data store")
+	flag.BoolVar(&noPassword, "no-password", false, "do not set a connection password")
 }
 
 func main() {
+	flag.Parse()
 	err := run()
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
@@ -43,19 +39,26 @@ func run() error {
 	defer db.Close()
 
 	err = db.Update(func(tx *bolt.Tx) error {
-		config := tx.Bucket([]byte("config"))
+		config := tx.Bucket(irc.BucketConfig)
 		if config != nil {
 			return fmt.Errorf("file already exists: %v", dataFile)
 		}
-		config, err := tx.CreateBucket([]byte("config"))
-		if err != nil {
-			return err
-		}
 
+		for _, bucket := range irc.Buckets {
+			tx.CreateBucketIfNotExists(bucket)
+		}
+		config = tx.Bucket(irc.BucketConfig)
 		if err := selfSign(config); err != nil {
 			return err
 		}
-		if err := serverPass(config); err != nil {
+		if !noPassword {
+			if err := serverPass(config); err != nil {
+				return err
+			}
+		}
+
+		opers := tx.Bucket(irc.BucketOpers)
+		if err := operPass(opers); err != nil {
 			return err
 		}
 		return nil
@@ -65,59 +68,47 @@ func run() error {
 
 // https://golang.org/src/crypto/tls/generate_cert.go
 func selfSign(config *bolt.Bucket) error {
-	const rsaBits = 2048
-	priv, err := rsa.GenerateKey(rand.Reader, rsaBits)
-
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	notBefore := time.Now()
-	notAfter := time.Now().Add(100 * 365 * 24 * time.Hour)
-
-	template := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{"chatty"},
-		},
-		NotBefore: notBefore,
-		NotAfter:  notAfter,
-
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: true,
-
-		IPAddresses: []net.IP{net.ParseIP("127.0.0.1")},
-	}
-
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	cert, key, err := security.SelfSignCert()
 	if err != nil {
-		return fmt.Errorf("failed to create certificate: %s", err)
+		return err
 	}
-	cert := pem.EncodeToMemory(&pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: derBytes,
-	})
-	key := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(priv),
-	})
-
 	config.Put(irc.ConfigCert, cert)
 	config.Put(irc.ConfigKey, key)
 	return nil
 }
 
 func serverPass(config *bolt.Bucket) error {
-	plaintext, err := passwd.Random()
+	plaintext, err := security.RandomPassword()
 	if err != nil {
 		return err
 	}
-	salt, err := passwd.Salt()
+	salt, err := security.Salt()
 	if err != nil {
 		return err
 	}
-	pass := passwd.Encode([]byte(plaintext), salt)
+	pass := security.EncodePassword([]byte(plaintext), salt)
 	config.Put(irc.ConfigPass, pass)
 	config.Put(irc.ConfigSalt, salt)
 	fmt.Printf("connection password is: %v\n", plaintext)
+	return nil
+}
+
+func operPass(opers *bolt.Bucket) error {
+	plaintext, err := security.RandomPassword()
+	if err != nil {
+		return err
+	}
+	salt, err := security.Salt()
+	if err != nil {
+		return err
+	}
+	pass := security.EncodePassword([]byte(plaintext), salt)
+	oper, err := opers.CreateBucket(irc.DefaultOper)
+	if err != nil {
+		return err
+	}
+	oper.Put(irc.OperPass, pass)
+	oper.Put(irc.OperSalt, salt)
+	fmt.Printf("\nserver operator:\n\t/OPER irc %v\n", plaintext)
 	return nil
 }

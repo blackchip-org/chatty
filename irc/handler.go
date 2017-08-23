@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blackchip-org/chatty/internal/passwd"
+	"github.com/blackchip-org/chatty/internal/security"
 	"github.com/boltdb/bolt"
 )
 
@@ -57,6 +57,8 @@ func (h *DefaultHandler) Handle(cmd Command) error {
 		h.names(cmd.Params)
 	case NickCmd:
 		h.nick(cmd.Params)
+	case OperCmd:
+		h.oper(cmd.Params)
 	case PartCmd:
 		h.part(cmd.Params)
 	case PassCmd:
@@ -248,6 +250,32 @@ func (h *DefaultHandler) nick(params []string) {
 	h.checkHandshake()
 }
 
+func (h *DefaultHandler) oper(params []string) {
+	if len(params) != 2 {
+		h.c.SendError(NewError(ErrNeedMoreParams, NickCmd))
+		return
+	}
+	// Ignore if already an operator
+	if _, exists := h.s.opers[h.c.User.ID]; exists {
+		return
+	}
+	nick := params[0]
+	pass := params[1]
+	if err := h.s.Oper(h.c, nick, pass); err != nil {
+		h.c.SendError(err)
+		return
+	}
+
+	m := Message{
+		Prefix:   h.c.User.Nick,
+		Cmd:      ModeCmd,
+		Params:   []string{h.c.User.Nick, ModeGrant + UserModeGlobalOperator},
+		NoSpaces: true,
+	}
+	h.c.SendMessage(m)
+	h.c.Reply(RplYoureOper)
+}
+
 func (h *DefaultHandler) part(params []string) {
 	if len(params) < 1 {
 		h.c.SendError(NewError(ErrNeedMoreParams, PartCmd))
@@ -405,7 +433,7 @@ func (h *DefaultHandler) canRegister() error {
 		if bsalt == nil {
 			return errors.New("no salt")
 		}
-		if !bytes.Equal(bpass, passwd.Encode([]byte(h.c.password), bsalt)) {
+		if !bytes.Equal(bpass, security.EncodePassword([]byte(h.c.password), bsalt)) {
 			h.c.SendError(NewError(ErrPasswordMismatch))
 			return errors.New("invalid password")
 		}

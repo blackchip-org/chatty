@@ -1,10 +1,12 @@
 package irc
 
 import (
+	"bytes"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/blackchip-org/chatty/internal/security"
 	"github.com/boltdb/bolt"
 )
 
@@ -16,6 +18,7 @@ type Service struct {
 	chans   map[string]*Chan
 	nicks   *Nicks
 	modes   map[UserID]*UserModes
+	opers   map[UserID]bool
 }
 
 func newService(name string, db *bolt.DB) *Service {
@@ -26,6 +29,7 @@ func newService(name string, db *bolt.DB) *Service {
 		chans:   make(map[string]*Chan),
 		nicks:   NewNicks(),
 		modes:   make(map[UserID]*UserModes),
+		opers:   make(map[UserID]bool),
 	}
 	return s
 }
@@ -81,6 +85,29 @@ func (s *Service) Nick(c *Client, nick string) error {
 	return nil
 }
 
+func (s *Service) Oper(c *Client, nick string, plaintext string) error {
+	err := s.db.View(func(tx *bolt.Tx) error {
+		oper := tx.Bucket(BucketOpers).Bucket([]byte(nick))
+		if oper == nil {
+			return NewError(ErrPasswordMismatch)
+		}
+		pass := oper.Get(OperPass)
+		salt := oper.Get(OperSalt)
+		if !bytes.Equal(pass, security.EncodePassword([]byte(plaintext), salt)) {
+			return NewError(ErrPasswordMismatch)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.opers[c.User.ID] = true
+	return nil
+}
+
 func (s *Service) Part(c *Client, name string, reason string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -129,6 +156,7 @@ func (s *Service) Quit(src *Client, reason string) {
 	src.Quit()
 	s.nicks.Unregister(src.User)
 	delete(s.modes, src.User.ID)
+	delete(s.opers, src.User.ID)
 }
 
 // ===== User Modes

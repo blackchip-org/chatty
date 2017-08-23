@@ -1,4 +1,4 @@
-package passwd
+package security
 
 import (
 	"crypto/rand"
@@ -8,7 +8,7 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
-func Random() (string, error) {
+func RandomPassword() (string, error) {
 	b := make([]byte, 33)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -26,7 +26,7 @@ func Salt() ([]byte, error) {
 	return salt, nil
 }
 
-func Encode(pass []byte, salt []byte) []byte {
+func EncodePassword(pass []byte, salt []byte) []byte {
 	const iters = 10000
 	const keylen = 64
 	encrypted := pbkdf2.Key(pass, salt, iters, keylen, sha512.New)

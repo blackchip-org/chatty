@@ -15,6 +15,7 @@ const (
 	RplTopic         = "332"
 	RplWelcome       = "001"
 	RplWhoReply      = "352"
+	RplYoureOper     = "381"
 	RplYourHost      = "002"
 )
 
@@ -23,4 +24,5 @@ var RplText = map[string]string{
 	RplEndOfNames:   "End of NAMES list.",
 	RplEndOfWho:     "End of WHO list.",
 	RplNoTopic:      "No topic is set.",
+	RplYoureOper:    "You are now an IRC Operator",
 }

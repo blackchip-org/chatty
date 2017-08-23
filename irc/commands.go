@@ -9,6 +9,7 @@ const (
 	ModeCmd    = "MODE"
 	NamesCmd   = "NAMES"
 	NickCmd    = "NICK"
+	OperCmd    = "OPER"
 	PartCmd    = "PART"
 	PassCmd    = "PASS"
 	PingCmd    = "PING"

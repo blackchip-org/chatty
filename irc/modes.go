@@ -2,6 +2,11 @@ package irc
 
 import "strings"
 
+const (
+	ModeGrant  = "+"
+	ModeRevoke = "-"
+)
+
 // https://www.alien.net.au/irc/chanmodes.html
 type ChanModes struct {
 	Bans           []string
